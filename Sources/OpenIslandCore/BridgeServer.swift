@@ -487,7 +487,7 @@ public final class BridgeServer: @unchecked Sendable {
                 SessionStarted(
                     sessionID: payload.sessionID,
                     title: payload.sessionTitle,
-                    tool: .codex,
+                    tool: payload.agentTool,
                     origin: .live,
                     summary: payload.implicitStartSummary,
                     timestamp: .now,
@@ -503,7 +503,7 @@ public final class BridgeServer: @unchecked Sendable {
             ensureSessionExists(for: payload)
             synchronizeJumpTarget(for: payload)
             synchronizeCodexMetadata(for: payload)
-            let prompt = payload.prompt ?? payload.promptPreview ?? "User submitted a prompt to Codex."
+            let prompt = payload.prompt ?? payload.promptPreview ?? "User submitted a prompt to \(payload.agentDisplayName)."
             emit(
                 .activityUpdated(
                     SessionActivityUpdated(
@@ -528,7 +528,7 @@ public final class BridgeServer: @unchecked Sendable {
                     sessionID: payload.sessionID,
                     request: PermissionRequest(
                         title: "Run Bash command",
-                        summary: "Codex wants to run a shell command.",
+                        summary: "\(payload.agentDisplayName) wants to run a shell command.",
                         affectedPath: payload.commandText ?? command,
                         primaryActionTitle: "Allow",
                         secondaryActionTitle: "Deny"
@@ -594,9 +594,11 @@ public final class BridgeServer: @unchecked Sendable {
 
         case .stop:
             ensureSessionExists(for: payload)
-            synchronizeJumpTarget(for: payload)
+            if payload.source != "copilot" {
+                synchronizeJumpTarget(for: payload)
+            }
             synchronizeCodexMetadata(for: payload)
-            let summary = payload.lastAssistantMessage ?? payload.assistantMessagePreview ?? "Codex completed the turn."
+            let summary = payload.lastAssistantMessage ?? payload.assistantMessagePreview ?? "\(payload.agentDisplayName) completed the turn."
 
             emit(
                 .sessionCompleted(
@@ -1828,7 +1830,7 @@ public final class BridgeServer: @unchecked Sendable {
                 SessionStarted(
                     sessionID: payload.sessionID,
                     title: payload.sessionTitle,
-                    tool: .codex,
+                    tool: payload.agentTool,
                     origin: .live,
                     summary: payload.implicitStartSummary,
                     timestamp: .now,
@@ -1951,6 +1953,11 @@ public final class BridgeServer: @unchecked Sendable {
            let existingID = existing?.terminalSessionID,
            !existingID.isEmpty {
             merged.terminalSessionID = existingID
+        }
+        if merged.terminalTTY == nil,
+           let existingTTY = existing?.terminalTTY,
+           !existingTTY.isEmpty {
+            merged.terminalTTY = existingTTY
         }
         if merged.warpPaneUUID == nil,
            let existingUUID = existing?.warpPaneUUID,

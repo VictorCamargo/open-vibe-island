@@ -101,6 +101,31 @@ struct BridgeServerJumpTargetMergeTests {
     }
 
     @Test
+    func preservesTerminalTTYWhenIncomingIsNil() {
+        let existing = JumpTarget(
+            terminalApp: "Terminal",
+            workspaceName: "demo",
+            paneTitle: "Copilot demo",
+            workingDirectory: "/tmp/demo",
+            terminalTTY: "/dev/ttys002"
+        )
+        let incoming = JumpTarget(
+            terminalApp: "Terminal",
+            workspaceName: "demo",
+            paneTitle: "Copilot demo",
+            workingDirectory: "/tmp/demo",
+            terminalTTY: nil
+        )
+
+        let merged = BridgeServer.mergeJumpTargetPreservingExistingResolvedFields(
+            incoming: incoming,
+            existing: existing
+        )
+
+        #expect(merged.terminalTTY == "/dev/ttys002")
+    }
+
+    @Test
     func doesNotInventValuesWhenBothSidesAreNil() {
         // Preservation only activates when there is an existing value
         // to carry forward. When both sides are nil, the merged field

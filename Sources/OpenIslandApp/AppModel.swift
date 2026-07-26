@@ -93,6 +93,7 @@ final class AppModel {
     var codexUsageSnapshot: CodexUsageSnapshot? { hooks.codexUsageSnapshot }
     var hooksBinaryURL: URL? { hooks.hooksBinaryURL }
     var codexHooksInstalled: Bool { hooks.codexHooksInstalled }
+    var copilotHooksInstalled: Bool { hooks.copilotHooksInstalled }
     var claudeHooksInstalled: Bool { hooks.claudeHooksInstalled }
     var qoderHooksInstalled: Bool { hooks.qoderHooksInstalled }
     var qwenCodeHooksInstalled: Bool { hooks.qwenCodeHooksInstalled }
@@ -120,6 +121,10 @@ final class AppModel {
     var isOpenCodeSetupBusy: Bool { hooks.isOpenCodeSetupBusy }
     var openCodePluginStatusTitle: String { hooks.openCodePluginStatusTitle }
     var openCodePluginStatusSummary: String { hooks.openCodePluginStatusSummary }
+    var copilotHookStatus: CopilotHookInstallationStatus? { hooks.copilotHookStatus }
+    var isCopilotSetupBusy: Bool { hooks.isCopilotSetupBusy }
+    var copilotHookStatusTitle: String { hooks.copilotHookStatusTitle }
+    var copilotHookStatusSummary: String { hooks.copilotHookStatusSummary }
     var claudeHealthReport: HookHealthReport? { hooks.claudeHealthReport }
     var codexHealthReport: HookHealthReport? { hooks.codexHealthReport }
     var cursorHooksInstalled: Bool { hooks.cursorHooksInstalled }
@@ -155,6 +160,7 @@ final class AppModel {
     var hasAnyInstalledAgent: Bool {
         hooks.claudeHooksInstalled
             || hooks.codexHooksInstalled
+            || hooks.copilotHooksInstalled
             || hooks.cursorHooksInstalled
             || hooks.qoderHooksInstalled
             || hooks.qwenCodeHooksInstalled
@@ -165,6 +171,7 @@ final class AppModel {
             || hooks.kimiHooksInstalled
     }
     func refreshCodexHookStatus() { hooks.refreshCodexHookStatus() }
+    func refreshCopilotHookStatus() { hooks.refreshCopilotHookStatus() }
     func refreshClaudeHookStatus() { hooks.refreshClaudeHookStatus() }
     func refreshOpenCodePluginStatus() { hooks.refreshOpenCodePluginStatus() }
     func refreshCursorHookStatus() { hooks.refreshCursorHookStatus() }
@@ -172,6 +179,8 @@ final class AppModel {
     func refreshCodexUsageState() { hooks.refreshCodexUsageState() }
     func installCodexHooks() { hooks.installCodexHooks() }
     func uninstallCodexHooks() { hooks.uninstallCodexHooks() }
+    func installCopilotHooks() { hooks.installCopilotHooks() }
+    func uninstallCopilotHooks() { hooks.uninstallCopilotHooks() }
     func installClaudeHooks() { hooks.installClaudeHooks() }
     func uninstallClaudeHooks() { hooks.uninstallClaudeHooks() }
     func installQoderHooks() { hooks.installQoderHooks() }
@@ -1641,6 +1650,7 @@ final class AppModel {
                 // that fixes #324.
                 if self.hooks.shouldAutoInstall(.claudeCode) { self.installClaudeHooks() }
                 if self.hooks.shouldAutoInstall(.codex) { self.installCodexHooks() }
+                if self.hooks.shouldAutoInstall(.copilot) { self.installCopilotHooks() }
                 if self.hooks.shouldAutoInstall(.qoder) { self.installQoderHooks() }
                 if self.hooks.shouldAutoInstall(.qwenCode) { self.installQwenCodeHooks() }
                 if self.hooks.shouldAutoInstall(.factory) { self.installFactoryHooks() }

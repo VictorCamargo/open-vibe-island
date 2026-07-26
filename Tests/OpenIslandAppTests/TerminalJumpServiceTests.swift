@@ -123,6 +123,37 @@ final class TerminalJumpServiceTests: XCTestCase {
         XCTAssertEqual(openedArguments.values, [["-b", "com.mitchellh.ghostty"]])
     }
 
+    func testGhosttyJumpFallsBackToActivationWhenAppleScriptFails() throws {
+        let openedArguments = OpenedArgumentsBox()
+        let service = TerminalJumpService(
+            applicationResolver: { bundleIdentifier in
+                bundleIdentifier == "com.mitchellh.ghostty" ? URL(fileURLWithPath: "/Applications/Ghostty.app") : nil
+            },
+            appRunningChecker: { bundleIdentifier in
+                bundleIdentifier == "com.mitchellh.ghostty"
+            },
+            openAction: { arguments in
+                openedArguments.values.append(arguments)
+            },
+            appleScriptRunner: { _ in
+                throw TerminalJumpError.appleScriptFailed("Not authorized to send Apple events to Ghostty.")
+            }
+        )
+
+        let result = try service.jump(
+            to: JumpTarget(
+                terminalApp: "Ghostty",
+                workspaceName: "open-island",
+                paneTitle: "Copilot open-island",
+                workingDirectory: "/Users/wangruobing/Personal/open-island",
+                terminalSessionID: "123"
+            )
+        )
+
+        XCTAssertEqual(result, "Activated Ghostty. Exact pane targeting could not find the live terminal.")
+        XCTAssertEqual(openedArguments.values, [["-b", "com.mitchellh.ghostty"]])
+    }
+
     func testCursorJumpActivatesRunningAppWithoutWorkspaceReuse() throws {
         let openedArguments = OpenedArgumentsBox()
         let service = TerminalJumpService(

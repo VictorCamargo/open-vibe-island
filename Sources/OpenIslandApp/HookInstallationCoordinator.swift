@@ -13,6 +13,7 @@ final class HookInstallationCoordinator {
     }
 
     var codexHookStatus: CodexHookInstallationStatus?
+    var copilotHookStatus: CopilotHookInstallationStatus?
     var claudeHookStatus: ClaudeHookInstallationStatus?
     var qoderHookStatus: ClaudeHookInstallationStatus?
     var qwenCodeHookStatus: ClaudeHookInstallationStatus?
@@ -27,6 +28,7 @@ final class HookInstallationCoordinator {
     var codexUsageSnapshot: CodexUsageSnapshot?
     var hooksBinaryURL: URL?
     var isCodexSetupBusy = false
+    var isCopilotSetupBusy = false
     var isClaudeHookSetupBusy = false
     var isQoderHookSetupBusy = false
     var isQwenCodeHookSetupBusy = false
@@ -43,6 +45,9 @@ final class HookInstallationCoordinator {
 
     @ObservationIgnored
     private let codexHookInstallationManager = CodexHookInstallationManager()
+
+    @ObservationIgnored
+    private let copilotHookInstallationManager = CopilotHookInstallationManager()
 
     /// Computed so it always reflects the latest `ClaudeConfigDirectory` setting.
     private var claudeHookInstallationManager: ClaudeHookInstallationManager {
@@ -107,6 +112,10 @@ final class HookInstallationCoordinator {
 
     var codexHooksInstalled: Bool {
         codexHookStatus?.managedHooksPresent == true
+    }
+
+    var copilotHooksInstalled: Bool {
+        copilotHookStatus?.managedHooksPresent == true
     }
 
     var claudeHooksInstalled: Bool {
@@ -407,6 +416,34 @@ final class HookInstallationCoordinator {
         return status.featureFlagEnabled ? "feature on · no managed hooks" : "feature off · no managed hooks"
     }
 
+    var copilotHookStatusTitle: String {
+        if copilotHooksInstalled {
+            return "Copilot CLI hooks installed"
+        }
+
+        if hooksBinaryURL == nil {
+            return "Hook binary not found"
+        }
+
+        return "Copilot CLI hooks not installed"
+    }
+
+    var copilotHookStatusSummary: String {
+        guard copilotHookStatus != nil else {
+            return "Reading ~/.copilot/hooks/open-island.json."
+        }
+
+        if copilotHooksInstalled {
+            return "managed hooks present"
+        }
+
+        if hooksBinaryURL == nil {
+            return "Build OpenIslandHooks before installing."
+        }
+
+        return "no managed Copilot CLI hooks"
+    }
+
     // MARK: - Claude config directory
 
     /// Updates the custom Claude config directory, cleans up old hooks if present, and refreshes status.
@@ -448,6 +485,7 @@ final class HookInstallationCoordinator {
                 if updated {
                     self.onStatusMessage?("Hooks binary updated to match the current app version.")
                     self.refreshCodexHookStatus()
+                    self.refreshCopilotHookStatus()
                     self.refreshClaudeHookStatus()
                     self.refreshCursorHookStatus()
                 }
@@ -571,6 +609,19 @@ final class HookInstallationCoordinator {
         }
     }
 
+    func refreshCopilotHookStatus() {
+        Task { [weak self] in
+            guard let self else { return }
+
+            do {
+                let status = try self.copilotHookInstallationManager.status(hooksBinaryURL: self.hooksBinaryURL)
+                self.copilotHookStatus = status
+            } catch {
+                self.onStatusMessage?("Failed to read Copilot CLI hook status: \(error.localizedDescription)")
+            }
+        }
+    }
+
     func refreshClaudeHookStatus() {
         Task { [weak self] in
             guard let self else { return }
@@ -628,6 +679,16 @@ final class HookInstallationCoordinator {
                     self.codexHookStatus = status
                 } catch {
                     self.onStatusMessage?("Failed to read Codex hook status: \(error.localizedDescription)")
+                }
+            }
+
+            group.addTask { @MainActor [weak self] in
+                guard let self else { return }
+                do {
+                    let status = try self.copilotHookInstallationManager.status(hooksBinaryURL: self.hooksBinaryURL)
+                    self.copilotHookStatus = status
+                } catch {
+                    self.onStatusMessage?("Failed to read Copilot CLI hook status: \(error.localizedDescription)")
                 }
             }
 
@@ -806,6 +867,7 @@ final class HookInstallationCoordinator {
         switch agent {
         case .claudeCode: return !claudeHooksInstalled
         case .codex: return !codexHooksInstalled
+        case .copilot: return false
         case .cursor: return !cursorHooksInstalled
         case .qoder: return !qoderHooksInstalled
         case .qwenCode: return !qwenCodeHooksInstalled
@@ -830,6 +892,7 @@ final class HookInstallationCoordinator {
             switch agent {
             case .claudeCode: return claudeHooksInstalled
             case .codex: return codexHooksInstalled
+            case .copilot: return copilotHooksInstalled
             case .cursor: return cursorHooksInstalled
             case .qoder: return qoderHooksInstalled
             case .qwenCode: return qwenCodeHooksInstalled
@@ -858,6 +921,23 @@ final class HookInstallationCoordinator {
 
     func uninstallCodexHooks() {
         updateCodexHooks(userMessage: "Removing Codex hooks.", intent: .uninstalled) { manager in
+            try manager.uninstall()
+        }
+    }
+
+    func installCopilotHooks() {
+        guard let hooksBinaryURL else {
+            onStatusMessage?("Could not find a local OpenIslandHooks binary. Build the package first.")
+            return
+        }
+
+        updateCopilotHooks(userMessage: "Installing Copilot CLI hooks.", intent: .installed) { manager in
+            try manager.install(hooksBinaryURL: hooksBinaryURL)
+        }
+    }
+
+    func uninstallCopilotHooks() {
+        updateCopilotHooks(userMessage: "Removing Copilot CLI hooks.", intent: .uninstalled) { manager in
             try manager.uninstall()
         }
     }
@@ -1143,6 +1223,34 @@ final class HookInstallationCoordinator {
                 }
             } catch {
                 self.onStatusMessage?("Codex hook update failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func updateCopilotHooks(
+        userMessage: String,
+        intent: AgentHookIntent,
+        operation: @escaping (CopilotHookInstallationManager) throws -> CopilotHookInstallationStatus
+    ) {
+        isCopilotSetupBusy = true
+        onStatusMessage?(userMessage)
+
+        Task { [weak self] in
+            guard let self else { return }
+
+            defer { self.isCopilotSetupBusy = false }
+
+            do {
+                let status = try operation(self.copilotHookInstallationManager)
+                self.copilotHookStatus = status
+                self.intentStore.setIntent(intent, for: .copilot)
+                if status.managedHooksPresent {
+                    self.onStatusMessage?("Copilot CLI hooks are installed and ready.")
+                } else {
+                    self.onStatusMessage?("Copilot CLI hooks are not installed.")
+                }
+            } catch {
+                self.onStatusMessage?("Copilot CLI hook update failed: \(error.localizedDescription)")
             }
         }
     }

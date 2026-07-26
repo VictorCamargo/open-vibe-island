@@ -213,7 +213,7 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         cwd = try container.decode(String.self, forKey: .cwd)
         hookEventName = try container.decode(CodexHookEventName.self, forKey: .hookEventName)
-        model = try container.decode(String.self, forKey: .model)
+        model = try container.decodeIfPresent(String.self, forKey: .model) ?? "unknown"
         permissionMode = try container.decodeIfPresent(CodexPermissionMode.self, forKey: .permissionMode) ?? .default
         sessionID = try container.decode(String.self, forKey: .sessionID)
         terminalApp = try container.decodeIfPresent(String.self, forKey: .terminalApp)
@@ -379,7 +379,15 @@ public extension CodexHookPayload {
     }
 
     var sessionTitle: String {
-        "Codex · \(workspaceName)"
+        "\(agentDisplayName) · \(workspaceName)"
+    }
+
+    var agentTool: AgentTool {
+        source == "copilot" ? .copilotCLI : .codex
+    }
+
+    var agentDisplayName: String {
+        agentTool.displayName
     }
 
     var defaultJumpTarget: JumpTarget {
@@ -412,20 +420,20 @@ public extension CodexHookPayload {
         switch hookEventName {
         case .sessionStart:
             if source == "resume" {
-                return "Resumed Codex session in \(workspaceName)."
+                return "Resumed \(agentDisplayName) session in \(workspaceName)."
             }
 
-            return "Started Codex session in \(workspaceName)."
+            return "Started \(agentDisplayName) session in \(workspaceName)."
         case .preToolUse:
-            return "Codex is preparing a Bash command in \(workspaceName)."
+            return "\(agentDisplayName) is preparing a Bash command in \(workspaceName)."
         case .permissionRequest:
-            return "Codex is waiting for permission approval in \(workspaceName)."
+            return "\(agentDisplayName) is waiting for permission approval in \(workspaceName)."
         case .postToolUse:
-            return "Codex reported a Bash result in \(workspaceName)."
+            return "\(agentDisplayName) reported a Bash result in \(workspaceName)."
         case .userPromptSubmit:
-            return "Codex received a new prompt in \(workspaceName)."
+            return "\(agentDisplayName) received a new prompt in \(workspaceName)."
         case .stop:
-            return "Codex completed a turn in \(workspaceName)."
+            return "\(agentDisplayName) completed a turn in \(workspaceName)."
         }
     }
 

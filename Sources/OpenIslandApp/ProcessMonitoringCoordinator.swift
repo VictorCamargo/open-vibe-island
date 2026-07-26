@@ -1422,6 +1422,8 @@ final class ProcessMonitoringCoordinator {
         switch session.tool {
         case .codex:
             return "Codex \(session.id.prefix(8))"
+        case .copilotCLI:
+            return "Copilot \(session.id.prefix(8))"
         case .claudeCode:
             return "Claude \(session.id.prefix(8))"
         case .geminiCLI:

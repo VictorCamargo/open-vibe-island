@@ -9,6 +9,7 @@ struct OpenIslandHooksCLI {
 
     private enum HookSource: String {
         case codex
+        case copilot
         case claude
         case qoder
         case qwen
@@ -23,7 +24,7 @@ struct OpenIslandHooksCLI {
             switch self {
             case .claude, .qoder, .qwen, .factory, .droid, .codebuddy, .kimi:
                 return true
-            case .codex, .cursor, .gemini:
+            case .codex, .copilot, .cursor, .gemini:
                 return false
             }
         }
@@ -49,10 +50,13 @@ struct OpenIslandHooksCLI {
             let client = BridgeCommandClient(socketURL: BridgeSocketLocation.currentURL())
 
             switch source {
-            case .codex:
-                let payload = try decoder
+            case .codex, .copilot:
+                var payload = try decoder
                     .decode(CodexHookPayload.self, from: input)
                     .withRuntimeContext(environment: ProcessInfo.processInfo.environment)
+                if source == .copilot {
+                    payload.source = "copilot"
+                }
 
                 let timeout = payload.hookEventName == .permissionRequest
                     ? interactiveCodexHookTimeout

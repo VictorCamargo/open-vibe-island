@@ -206,6 +206,8 @@ extension AgentSession {
             return "Claude"
         case .codex:
             return "Codex"
+        case .copilotCLI:
+            return "Copilot"
         case .geminiCLI:
             return "Gemini"
         case .openCode:

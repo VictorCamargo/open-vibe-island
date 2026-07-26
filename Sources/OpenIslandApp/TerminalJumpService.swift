@@ -357,7 +357,7 @@ struct TerminalJumpService {
                     return "Focused the matching cmux terminal."
                 }
             case "com.mitchellh.ghostty":
-                if try jumpToGhosttyTerminal(target) {
+                if (try? jumpToGhosttyTerminal(target)) == true {
                     return "Focused the matching Ghostty terminal."
                 }
             case "com.apple.Terminal":

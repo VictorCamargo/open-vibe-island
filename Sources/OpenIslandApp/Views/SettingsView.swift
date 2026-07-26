@@ -410,6 +410,7 @@ struct SetupSettingsPane: View {
 
     @State private var confirmingUninstallClaude = false
     @State private var confirmingUninstallCodex = false
+    @State private var confirmingUninstallCopilot = false
     @State private var confirmingUninstallOpenCode = false
     @State private var confirmingUninstallQoder = false
     @State private var confirmingUninstallQwenCode = false
@@ -463,6 +464,23 @@ struct SetupSettingsPane: View {
                     Button(lang.t("settings.general.cancel"), role: .cancel) {}
                 } message: {
                     Text(lang.t("settings.general.uninstallConfirmMessage.codex"))
+                }
+
+                hookRow(
+                    name: "Copilot CLI",
+                    installed: model.copilotHooksInstalled,
+                    busy: model.isCopilotSetupBusy,
+                    configLocationURL: model.copilotHookStatus?.hooksURL,
+                    installAction: { model.installCopilotHooks() },
+                    uninstallAction: { confirmingUninstallCopilot = true }
+                )
+                .alert(lang.t("settings.general.uninstallConfirmTitle"), isPresented: $confirmingUninstallCopilot) {
+                    Button(lang.t("settings.general.uninstallConfirmAction"), role: .destructive) {
+                        model.uninstallCopilotHooks()
+                    }
+                    Button(lang.t("settings.general.cancel"), role: .cancel) {}
+                } message: {
+                    Text("This will remove Open Island hooks from ~/.copilot/hooks/open-island.json.")
                 }
 
                 hookRow(
@@ -671,6 +689,7 @@ struct SetupSettingsPane: View {
                 Button(lang.t("setup.installAll")) {
                     if !model.claudeHooksInstalled { model.installClaudeHooks() }
                     if !model.codexHooksInstalled { model.installCodexHooks() }
+                    if !model.copilotHooksInstalled { model.installCopilotHooks() }
                     if !model.openCodePluginInstalled { model.installOpenCodePlugin() }
                     if !model.qoderHooksInstalled { model.installQoderHooks() }
                     if !model.qwenCodeHooksInstalled { model.installQwenCodeHooks() }
@@ -738,7 +757,7 @@ struct SetupSettingsPane: View {
     }
 
     private var allReady: Bool {
-        model.claudeHooksInstalled && model.codexHooksInstalled && model.openCodePluginInstalled
+        model.claudeHooksInstalled && model.codexHooksInstalled && model.copilotHooksInstalled && model.openCodePluginInstalled
             && model.qoderHooksInstalled && model.qwenCodeHooksInstalled && model.factoryHooksInstalled && model.codebuddyHooksInstalled
             && model.cursorHooksInstalled && model.geminiHooksInstalled && model.kimiHooksInstalled && model.claudeUsageInstalled
     }

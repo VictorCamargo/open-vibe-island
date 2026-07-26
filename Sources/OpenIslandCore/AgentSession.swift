@@ -514,7 +514,7 @@ public extension AgentSession {
     }
 
     var isTrackedLiveSession: Bool {
-        !isDemoSession && (tool == .codex || tool == .claudeCode || tool == .geminiCLI || tool == .openCode || tool == .qoder || tool == .qwenCode || tool == .factory || tool == .codebuddy || tool == .cursor || tool == .kimiCLI)
+        !isDemoSession && (tool == .codex || tool == .copilotCLI || tool == .claudeCode || tool == .geminiCLI || tool == .openCode || tool == .qoder || tool == .qwenCode || tool == .factory || tool == .codebuddy || tool == .cursor || tool == .kimiCLI)
     }
 
     var isTrackedLiveCodexSession: Bool {
@@ -540,6 +540,9 @@ public extension AgentSession {
                 return false
             }
             return isProcessAlive
+        }
+        if tool == .copilotCLI, phase == .completed {
+            return true
         }
         if isHookManaged { return !isSessionEnded }
         if isProcessAlive { return true }

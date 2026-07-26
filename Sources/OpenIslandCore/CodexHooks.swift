@@ -379,7 +379,24 @@ public extension CodexHookPayload {
     }
 
     var sessionTitle: String {
-        "\(agentDisplayName) · \(workspaceName)"
+        if agentTool == .copilotCLI,
+           let promptTitle = friendlyPromptTitle {
+            return promptTitle
+        }
+        return "\(agentDisplayName) · \(workspaceName)"
+    }
+
+    var friendlyPromptTitle: String? {
+        let raw = prompt ?? promptPreview
+        guard let title = raw?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !title.isEmpty else {
+            return nil
+        }
+
+        return title
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     var agentTool: AgentTool {

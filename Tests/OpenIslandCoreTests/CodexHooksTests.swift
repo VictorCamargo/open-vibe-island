@@ -133,6 +133,24 @@ struct CodexHooksTests {
     }
 
     @Test
+    func copilotSessionTitleUsesPromptWhenAvailable() {
+        var payload = CodexHookPayload(
+            cwd: "/Users/u/project",
+            hookEventName: .userPromptSubmit,
+            model: "unknown",
+            permissionMode: .default,
+            sessionID: "bbd19fd0-87da-47d0-b3dd-974",
+            transcriptPath: nil,
+            source: "copilot",
+            prompt: "Fix the crash on startup"
+        )
+        payload.terminalApp = "Ghostty"
+
+        #expect(payload.sessionTitle == "Fix the crash on startup")
+        #expect(payload.agentDisplayName == "Copilot")
+    }
+
+    @Test
     func codexPermissionRequestPayloadAcceptsDescriptionOnlyToolInput() throws {
         let data = """
         {

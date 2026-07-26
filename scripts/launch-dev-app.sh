@@ -119,6 +119,11 @@ fi
 # Remove stale symlinks from previous runs.
 [ -L "$root_bundle" ] && rm -f "$root_bundle"
 
+# SPM artifacts and copied frameworks can carry quarantine/Finder xattrs.
+# codesign rejects those with "resource fork ... not allowed", and launching
+# an ignored failed signature crashes immediately with CODESIGNING Invalid Page.
+xattr -cr "$bundle_dir"
+
 # Detect a local stable signing identity so the dev bundle's cdhash
 # stays stable across rebuilds and macOS TCC grants (Accessibility,
 # Automation) persist. Without it we fall back to ad-hoc signing, which
@@ -139,6 +144,6 @@ else
     echo
 fi
 
-codesign --force --deep --sign "$sign_identity" "$bundle_dir" 2>/dev/null || true
+codesign --force --deep --sign "$sign_identity" "$bundle_dir"
 
 open -na "$bundle_dir"

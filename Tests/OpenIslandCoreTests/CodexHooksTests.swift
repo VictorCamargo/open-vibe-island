@@ -87,6 +87,52 @@ struct CodexHooksTests {
     }
 
     @Test
+    func codexWithRuntimeContextDetectsGitHubCopilotApp() {
+        let payload = CodexHookPayload(
+            cwd: "/Users/u/project",
+            hookEventName: .sessionStart,
+            model: "gpt-4o",
+            permissionMode: .default,
+            sessionID: "s1",
+            transcriptPath: nil
+        ).withRuntimeContext(
+            environment: ["__CFBundleIdentifier": "com.github.githubapp"],
+            currentTTYProvider: { nil },
+            terminalLocatorProvider: { _ in (sessionID: nil, tty: nil, title: nil) },
+            warpPaneResolver: { _ in nil }
+        )
+
+        #expect(payload.terminalApp == "GitHub Copilot")
+        #expect(payload.agentTool == .copilotCLI)
+        #expect(payload.defaultJumpTarget.terminalApp == "GitHub Copilot")
+    }
+
+    @Test
+    func codexWithRuntimeContextFallsBackToProcessTreeTerminalApp() {
+        let payload = CodexHookPayload(
+            cwd: "/Users/u/project",
+            hookEventName: .userPromptSubmit,
+            model: "gpt-4o",
+            permissionMode: .default,
+            sessionID: "s1",
+            transcriptPath: nil
+        ).withRuntimeContext(
+            environment: [:],
+            currentTTYProvider: { nil },
+            terminalLocatorProvider: { terminalApp in
+                #expect(terminalApp == "Ghostty")
+                return (sessionID: "42", tty: nil, title: "copilot ~/project")
+            },
+            warpPaneResolver: { _ in nil },
+            processTreeTerminalAppProvider: { "Ghostty" }
+        )
+
+        #expect(payload.terminalApp == "Ghostty")
+        #expect(payload.terminalSessionID == "42")
+        #expect(payload.terminalTitle == "copilot ~/project")
+    }
+
+    @Test
     func codexPermissionRequestPayloadAcceptsDescriptionOnlyToolInput() throws {
         let data = """
         {

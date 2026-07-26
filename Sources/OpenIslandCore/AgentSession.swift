@@ -20,7 +20,7 @@ public enum AgentTool: String, CaseIterable, Codable, Sendable {
         case .codex:
             "Codex"
         case .copilotCLI:
-            "Copilot CLI"
+            "Copilot"
         case .geminiCLI:
             "Gemini CLI"
         case .openCode:

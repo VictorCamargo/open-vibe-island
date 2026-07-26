@@ -472,6 +472,10 @@ struct ActiveAgentProcessDiscovery {
             return "Codex.app"
         }
 
+        if lowered.contains("/github copilot.app/") {
+            return "GitHub Copilot"
+        }
+
         if lowered.contains("/cmux.app/contents/macos/cmux") {
             return "cmux"
         }

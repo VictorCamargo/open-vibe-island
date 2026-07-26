@@ -496,6 +496,34 @@ final class TerminalJumpServiceTests: XCTestCase {
         XCTAssertEqual(openedArguments.values, [["codex://threads/\(threadID)"]])
     }
 
+    func testGitHubCopilotAppJumpActivatesDesktopApp() throws {
+        let openedArguments = OpenedArgumentsBox()
+        let service = TerminalJumpService(
+            applicationResolver: { bundleIdentifier in
+                bundleIdentifier == "com.github.githubapp" ? URL(fileURLWithPath: "/Applications/GitHub Copilot.app") : nil
+            },
+            appRunningChecker: { bundleIdentifier in
+                bundleIdentifier == "com.github.githubapp"
+            },
+            openAction: { arguments in
+                openedArguments.values.append(arguments)
+            },
+            appleScriptRunner: { _ in "" }
+        )
+
+        let result = try service.jump(
+            to: JumpTarget(
+                terminalApp: "GitHub Copilot",
+                workspaceName: "my-project",
+                paneTitle: "",
+                workingDirectory: "/Users/test/my-project"
+            )
+        )
+
+        XCTAssertEqual(result, "Activated GitHub Copilot.")
+        XCTAssertEqual(openedArguments.values, [["-b", "com.github.githubapp"]])
+    }
+
     func testTraeCNJumpFallsBackToWorkspaceViaTraeCLI() throws {
         let openedArguments = OpenedArgumentsBox()
         let processInvocations = ProcessInvocationBox()

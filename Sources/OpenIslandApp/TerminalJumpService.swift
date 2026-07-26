@@ -79,6 +79,11 @@ struct TerminalJumpService {
             aliases: ["codex.app"]
         ),
         TerminalAppDescriptor(
+            displayName: "GitHub Copilot",
+            bundleIdentifier: "com.github.githubapp",
+            aliases: ["github copilot", "copilot.app"]
+        ),
+        TerminalAppDescriptor(
             displayName: "Claude.app",
             bundleIdentifier: "com.anthropic.claudefordesktop",
             aliases: ["claude.app"]
@@ -343,6 +348,9 @@ struct TerminalJumpService {
                 }
                 try openAction(["-b", "com.openai.codex"])
                 return "Activated Codex.app."
+            case "com.github.githubapp":
+                try openAction(["-b", "com.github.githubapp"])
+                return "Activated GitHub Copilot."
             case "com.anthropic.claudefordesktop":
                 // Claude Desktop hosts the conversation in-app; there is no
                 // per-session deep link, so just bring the app forward.

@@ -383,7 +383,7 @@ public extension CodexHookPayload {
     }
 
     var agentTool: AgentTool {
-        source == "copilot" ? .copilotCLI : .codex
+        source == "copilot" || terminalApp == "GitHub Copilot" ? .copilotCLI : .codex
     }
 
     var agentDisplayName: String {
@@ -554,7 +554,8 @@ public extension CodexHookPayload {
             environment: environment,
             currentTTYProvider: { currentTTY() },
             terminalLocatorProvider: { terminalLocator(for: $0) },
-            warpPaneResolver: Self.defaultWarpPaneResolver
+            warpPaneResolver: Self.defaultWarpPaneResolver,
+            processTreeTerminalAppProvider: { inferTerminalAppFromProcessTree() }
         )
     }
 
@@ -577,12 +578,13 @@ public extension CodexHookPayload {
         environment: [String: String],
         currentTTYProvider: () -> String?,
         terminalLocatorProvider: (String) -> (sessionID: String?, tty: String?, title: String?),
-        warpPaneResolver: (String) -> String? = Self.defaultWarpPaneResolver
+        warpPaneResolver: (String) -> String? = Self.defaultWarpPaneResolver,
+        processTreeTerminalAppProvider: () -> String? = { nil }
     ) -> CodexHookPayload {
         var payload = self
 
         if payload.terminalApp == nil {
-            payload.terminalApp = inferTerminalApp(from: environment)
+            payload.terminalApp = inferTerminalApp(from: environment) ?? processTreeTerminalAppProvider()
         }
 
         if payload.terminalApp == "Warp", payload.warpPaneUUID == nil {
@@ -646,7 +648,7 @@ public extension CodexHookPayload {
     }
 
     private static let noLocatorTerminalApps: Set<String> = [
-        "cmux", "codex.app", "kaku", "wezterm", "zellij",
+        "cmux", "codex.app", "github copilot", "kaku", "wezterm", "zellij",
         "vs code", "vs code insiders", "cursor", "windsurf", "trae",
         "intellij idea", "webstorm", "pycharm", "goland", "clion",
         "rubymine", "phpstorm", "rider", "rustrover",
@@ -693,9 +695,13 @@ public extension CodexHookPayload {
         // __CFBundleIdentifier is safe here because a real terminal session
         // would have its own terminal's bundle ID (e.g. com.mitchellh.ghostty),
         // not one containing both "openai" and "codex".
-        if let bundleID = environment["__CFBundleIdentifier"]?.lowercased(),
-           bundleID.contains("openai") && bundleID.contains("codex") {
-            return "Codex.app"
+        if let bundleID = environment["__CFBundleIdentifier"]?.lowercased() {
+            if bundleID.contains("openai") && bundleID.contains("codex") {
+                return "Codex.app"
+            }
+            if bundleID == "com.github.githubapp" || (bundleID.contains("github") && bundleID.contains("copilot")) {
+                return "GitHub Copilot"
+            }
         }
 
         // TERM_PROGRAM is the only authoritative terminal signal. Each
@@ -762,6 +768,58 @@ public extension CodexHookPayload {
             return "IntelliJ IDEA"
         }
 
+        return nil
+    }
+
+    private func inferTerminalAppFromProcessTree() -> String? {
+        guard let output = commandOutput(executablePath: "/bin/ps", arguments: ["-Ao", "pid=,ppid=,command="]) else {
+            return nil
+        }
+
+        var parents: [String: String] = [:]
+        var commands: [String: String] = [:]
+        for line in output.split(whereSeparator: \.isNewline) {
+            let components = line
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .split(maxSplits: 2, whereSeparator: \.isWhitespace)
+            guard components.count == 3 else { continue }
+            let pid = String(components[0])
+            parents[pid] = String(components[1])
+            commands[pid] = String(components[2]).lowercased()
+        }
+
+        var pid = "\(getppid())"
+        var visited = Set<String>()
+        while !pid.isEmpty, pid != "1", !visited.contains(pid) {
+            visited.insert(pid)
+            if let app = terminalAppFromProcessCommand(commands[pid] ?? "") {
+                return app
+            }
+            pid = parents[pid] ?? ""
+        }
+
+        return nil
+    }
+
+    private func terminalAppFromProcessCommand(_ command: String) -> String? {
+        if command.contains("/github copilot.app/") {
+            return "GitHub Copilot"
+        }
+        if command.contains("/ghostty.app/contents/macos/ghostty") || command.hasSuffix("/ghostty") {
+            return "Ghostty"
+        }
+        if command.contains("/terminal.app/contents/macos/terminal") {
+            return "Terminal"
+        }
+        if command.contains("/iterm.app/contents/macos/iterm2") {
+            return "iTerm"
+        }
+        if command.contains("/warp.app/") || command.hasSuffix("/warp") {
+            return "Warp"
+        }
+        if command.contains("/codex.app/contents/macos/") {
+            return "Codex.app"
+        }
         return nil
     }
 

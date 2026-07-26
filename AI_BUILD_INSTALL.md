@@ -1,6 +1,6 @@
 # AI Build and Install Notes
 
-This fork adds Copilot CLI hook support to Open Island.
+This fork adds Copilot CLI and GitHub Copilot.app hook support to Open Island.
 
 ## Install locally
 
@@ -24,7 +24,8 @@ After the app opens:
 3. Click `Install` on the `Copilot CLI` row.
 
 The app writes `~/.copilot/hooks/open-island.json` only from this UI action
-or from the explicit `Install All` button.
+or from the explicit `Install All` button. The same hook path is used by
+Copilot CLI and GitHub Copilot.app.
 
 ## Useful checks
 

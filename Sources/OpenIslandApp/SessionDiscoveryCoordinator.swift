@@ -58,6 +58,9 @@ final class SessionDiscoveryCoordinator {
     private let codexRolloutDiscovery = CodexRolloutDiscovery()
 
     @ObservationIgnored
+    private let codexAppRediscovery = CodexRolloutDiscovery(maxAge: 120, maxFiles: 8)
+
+    @ObservationIgnored
     private let claudeTranscriptDiscovery = ClaudeTranscriptDiscovery()
 
     @ObservationIgnored
@@ -421,7 +424,7 @@ final class SessionDiscoveryCoordinator {
         guard now.timeIntervalSince(lastCodexAppRescanDate) >= 10 else { return }
         lastCodexAppRescanDate = now
 
-        let discovery = codexRolloutDiscovery
+        let discovery = codexAppRediscovery
         Task.detached(priority: .utility) { [weak self] in
             let discovered = discovery.discoverRecentSessions()
             guard !discovered.isEmpty else { return }

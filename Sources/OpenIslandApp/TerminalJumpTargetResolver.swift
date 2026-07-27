@@ -160,7 +160,22 @@ struct TerminalJumpTargetResolver {
         var claimedSessionIDs: Set<String> = []
         var claimedSnapshotIDs: Set<String> = []
 
-        // Pass 1: exact session ID match via terminal session ID.
+        // Pass 1: exact pane title match. Ghostty tab titles often contain a
+        // common suffix like "GitHub Copilot"; exact title equality must win
+        // before substring matching, or a generic title can bind to the wrong
+        // tab in the same project.
+        for snapshot in snapshots where !claimedSnapshotIDs.contains(snapshot.sessionID) {
+            if let session = sessions.first(where: {
+                !claimedSessionIDs.contains($0.id)
+                    && nonEmptyValue($0.jumpTarget?.paneTitle) == snapshot.title
+            }) {
+                assignments[session.id] = snapshot
+                claimedSessionIDs.insert(session.id)
+                claimedSnapshotIDs.insert(snapshot.sessionID)
+            }
+        }
+
+        // Pass 2: exact session ID match via terminal session ID.
         for snapshot in snapshots where !claimedSnapshotIDs.contains(snapshot.sessionID) {
             if let session = sessions.first(where: {
                 !claimedSessionIDs.contains($0.id)
@@ -172,7 +187,7 @@ struct TerminalJumpTargetResolver {
             }
         }
 
-        // Pass 2: pane title match. This is more specific than cwd when
+        // Pass 3: pane title substring match. This is more specific than cwd when
         // multiple Ghostty tabs are open in the same project.
         for snapshot in snapshots where !claimedSnapshotIDs.contains(snapshot.sessionID) {
             if let session = sessions.first(where: {
@@ -185,7 +200,7 @@ struct TerminalJumpTargetResolver {
             }
         }
 
-        // Pass 3: working directory fallback.
+        // Pass 4: working directory fallback.
         for snapshot in snapshots where !claimedSnapshotIDs.contains(snapshot.sessionID) {
             let snapshotCWD = normalizedPathForMatching(snapshot.workingDirectory)
             if let session = sessions.first(where: {

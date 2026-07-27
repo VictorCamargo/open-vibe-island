@@ -93,6 +93,44 @@ final class TerminalJumpServiceTests: XCTestCase {
         XCTAssertEqual(updates["copilot-session"]?.terminalSessionID, "ghostty-copilot-tab")
     }
 
+    func testGhosttyResolverPrefersExactPaneTitleOverContainingTitleAndStaleID() {
+        let session = AgentSession(
+            id: "copilot-session",
+            title: "Validar ideia de notificações do Cop",
+            tool: .copilotCLI,
+            origin: .live,
+            attachmentState: .attached,
+            phase: .completed,
+            summary: "Ready",
+            updatedAt: Date(timeIntervalSince1970: 1_000),
+            jumpTarget: JumpTarget(
+                terminalApp: "Ghostty",
+                workspaceName: "test",
+                paneTitle: "GitHub Copilot",
+                workingDirectory: "/Users/victorcamargo/projects/test",
+                terminalSessionID: "ghostty-containing-title"
+            )
+        )
+
+        let updates = TerminalJumpTargetResolver().resolveJumpTargets(
+            for: [session],
+            ghosttySnapshots: [
+                .init(
+                    sessionID: "ghostty-containing-title",
+                    workingDirectory: "/Users/victorcamargo/projects/test",
+                    title: "Optimize Input Handling - GitHub Copilot"
+                ),
+                .init(
+                    sessionID: "ghostty-exact-title",
+                    workingDirectory: "/Users/victorcamargo/projects/test",
+                    title: "GitHub Copilot"
+                ),
+            ]
+        )
+
+        XCTAssertEqual(updates["copilot-session"]?.terminalSessionID, "ghostty-exact-title")
+    }
+
     func testGhosttyJumpIntegrationMatchesFocusedTerminalForLiveSurfaces() throws {
         guard ProcessInfo.processInfo.environment["OPEN_ISLAND_RUN_GHOSTTY_JUMP_INTEGRATION"] == "1" else {
             throw XCTSkip("Set OPEN_ISLAND_RUN_GHOSTTY_JUMP_INTEGRATION=1 to run live Ghostty jump verification.")

@@ -270,6 +270,35 @@ struct CodexHooksTests {
     }
 
     @Test
+    func copilotNotificationQuestionPromptParsesNumberedOptions() throws {
+        let data = """
+        {
+          "cwd": "/Users/u/project",
+          "hook_event_name": "Notification",
+          "model": "unknown",
+          "permission_mode": "default",
+          "session_id": "copilot-1",
+          "source": "copilot",
+          "notification_type": "elicitation_dialog",
+          "title": "Asking user",
+          "message": "Question\\n---\\nWhat programming language would you like to use for your project?\\n› 1. TypeScript (Recommended)\\n2. Python\\n3. Go\\n4. Rust\\n5. Java\\n6. Other (type your answer)\\n↑/↓ to select · enter to confirm · esc to cancel"
+        }
+        """.data(using: .utf8)!
+
+        let payload = try JSONDecoder().decode(CodexHookPayload.self, from: data)
+
+        #expect(payload.notificationQuestionPrompt.title == "What programming language would you like to use for your project?")
+        #expect(payload.notificationQuestionPrompt.options == [
+            "TypeScript (Recommended)",
+            "Python",
+            "Go",
+            "Rust",
+            "Java",
+            "Other (type your answer)"
+        ])
+    }
+
+    @Test
     func copilotNotificationDetectsUserInputFromTextFallback() {
         let payload = CodexHookPayload(
             cwd: "/Users/u/project",

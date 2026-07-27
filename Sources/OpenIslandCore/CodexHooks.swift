@@ -561,6 +561,86 @@ public extension CodexHookPayload {
             || haystack.contains("waiting for input")
     }
 
+    var notificationQuestionPrompt: QuestionPrompt {
+        let message = notificationMessage?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = notificationTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallback = "\(agentDisplayName) needs your input."
+        let rawPrompt = message?.isEmpty == false
+            ? message!
+            : (title?.isEmpty == false ? title! : fallback)
+        let parsed = Self.parseQuestionPrompt(rawPrompt)
+
+        return QuestionPrompt(
+            title: parsed.title.isEmpty ? fallback : parsed.title,
+            options: parsed.options
+        )
+    }
+
+    static func parseQuestionPrompt(_ rawPrompt: String) -> (title: String, options: [String]) {
+        let lines = rawPrompt
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && !isQuestionChromeLine($0) }
+
+        guard !lines.isEmpty else {
+            return ("", [])
+        }
+
+        var titleLines: [String] = []
+        var options: [String] = []
+
+        for line in lines {
+            if let option = numberedOptionText(from: line) {
+                options.append(option)
+            } else if options.isEmpty {
+                titleLines.append(questionTitleLine(from: line))
+            }
+        }
+
+        return (titleLines.joined(separator: " "), options)
+    }
+
+    private static func numberedOptionText(from line: String) -> String? {
+        let normalizedLine = line
+            .trimmingCharacters(in: CharacterSet(charactersIn: "›>•○● ").union(.whitespacesAndNewlines))
+
+        guard let dotIndex = normalizedLine.firstIndex(of: ".") else {
+            return nil
+        }
+
+        let prefix = normalizedLine[..<dotIndex].trimmingCharacters(in: .whitespaces)
+        guard !prefix.isEmpty, prefix.allSatisfy(\.isNumber) else {
+            return nil
+        }
+
+        let option = normalizedLine[normalizedLine.index(after: dotIndex)...]
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return option.isEmpty ? nil : option
+    }
+
+    private static func questionTitleLine(from line: String) -> String {
+        let lower = line.lowercased()
+        if lower.hasPrefix("asking user ") {
+            return String(line.dropFirst("asking user ".count))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return line
+    }
+
+    private static func isQuestionChromeLine(_ line: String) -> Bool {
+        let lower = line.lowercased()
+        if lower == "question" {
+            return true
+        }
+        if lower.contains("to select") && lower.contains("enter to confirm") {
+            return true
+        }
+        return line.allSatisfy { character in
+            character == "-" || character == "─" || character == "━"
+        }
+    }
+
     var assistantMessagePreview: String? {
         clipped(lastAssistantMessage)
     }

@@ -1253,7 +1253,7 @@ private struct IslandSessionRow: View {
         .animation(.easeInOut(duration: 0.15), value: isHighlighted)
         .onTapGesture(perform: handlePrimaryTap)
         .onHover { hovering in
-            guard isInteractive, allowsRowHoverHighlight else { return }
+            guard (isInteractive || onDismiss != nil), allowsRowHoverHighlight else { return }
             isHighlighted = hovering
         }
         .onChange(of: isInteractive) { _, interactive in
@@ -1407,6 +1407,8 @@ private struct IslandSessionRow: View {
         return Text(agentBadgeTitle)
             .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
             .foregroundStyle(tint.opacity(notificationChromeOpacity))
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(tint.opacity(notificationBadgeFillOpacity), in: Capsule())
@@ -1417,6 +1419,8 @@ private struct IslandSessionRow: View {
         Text(title)
             .font(.system(size: 10.5, weight: .medium, design: .monospaced))
             .foregroundStyle(V6Palette.paper.opacity(presentation == .notification ? 0.52 : 0.7))
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(.white.opacity(presentation == .notification ? 0.045 : 0.06), in: Capsule())
@@ -2020,6 +2024,8 @@ private struct IslandSessionRow: View {
             }
             Text(title)
                 .font(.system(size: 9, weight: .semibold))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .foregroundStyle(badgeTextColor(for: presence))
         .padding(.horizontal, 7)

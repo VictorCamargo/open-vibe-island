@@ -423,16 +423,9 @@ public struct SessionState: Equatable, Sendable {
 
     /// Remove sessions that are no longer visible in the island.
     /// Returns `true` if any sessions were removed.
-    @discardableResult
-    /// Manually mark a session as completed and ended.
-    /// Intended for remote sessions whose SSH tunnel dropped without a
-    /// SessionEnd hook.
+    /// Manually archive a session from the island UI.
     public mutating func dismissSession(id: String) {
-        guard var session = sessionsByID[id] else { return }
-        session.isSessionEnded = true
-        session.phase = .completed
-        session.updatedAt = .now
-        upsert(session)
+        sessionsByID.removeValue(forKey: id)
     }
 
     public mutating func removeInvisibleSessions() -> Bool {

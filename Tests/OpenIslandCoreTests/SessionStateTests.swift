@@ -88,6 +88,47 @@ struct SessionStateTests {
         #expect(state.liveSessionCount == 1)
     }
 
+    @Test
+    func dismissSessionArchivesVisibleCompletedCopilotSession() {
+        let startedAt = Date(timeIntervalSince1970: 7_200)
+        var state = SessionState()
+
+        state.apply(
+            .sessionStarted(
+                SessionStarted(
+                    sessionID: "copilot-archived",
+                    title: "Review the failing test",
+                    tool: .copilotCLI,
+                    origin: .live,
+                    summary: "Running Copilot",
+                    timestamp: startedAt,
+                    jumpTarget: JumpTarget(
+                        terminalApp: "Ghostty",
+                        workspaceName: "open-island",
+                        paneTitle: "copilot open-island",
+                        workingDirectory: "/Users/example/open-island"
+                    )
+                )
+            )
+        )
+        state.apply(
+            .sessionCompleted(
+                SessionCompleted(
+                    sessionID: "copilot-archived",
+                    summary: "Fixed the test.",
+                    timestamp: startedAt.addingTimeInterval(10)
+                )
+            )
+        )
+
+        #expect(state.session(id: "copilot-archived")?.isVisibleInIsland == true)
+
+        state.dismissSession(id: "copilot-archived")
+
+        #expect(state.session(id: "copilot-archived") == nil)
+        #expect(state.liveSessionCount == 0)
+    }
+
     /// Verifies permission and question events update an already-tracked session.
     @Test
     func appliesPermissionAndQuestionEventsToExistingSessions() {

@@ -603,17 +603,11 @@ public final class BridgeServer: @unchecked Sendable {
             synchronizeCodexTitle(for: payload)
 
             if payload.isUserInputNotification {
-                let message = payload.notificationMessage?.trimmingCharacters(in: .whitespacesAndNewlines)
-                let title = payload.notificationTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
-                let promptTitle = message?.isEmpty == false
-                    ? message!
-                    : (title?.isEmpty == false ? title! : "\(payload.agentDisplayName) needs your input.")
-
                 emit(
                     .questionAsked(
                         QuestionAsked(
                             sessionID: payload.sessionID,
-                            prompt: QuestionPrompt(title: promptTitle, options: []),
+                            prompt: payload.notificationQuestionPrompt,
                             timestamp: .now
                         )
                     )

@@ -141,6 +141,9 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
     public var prompt: String?
     public var stopHookActive: Bool?
     public var lastAssistantMessage: String?
+    public var title: String?
+    public var conversationTitle: String?
+    public var threadTitle: String?
 
     private enum CodingKeys: String, CodingKey {
         case cwd
@@ -163,6 +166,9 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
         case prompt
         case stopHookActive = "stop_hook_active"
         case lastAssistantMessage = "last_assistant_message"
+        case title
+        case conversationTitle = "conversation_title"
+        case threadTitle = "thread_title"
     }
 
     public init(
@@ -185,7 +191,10 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
         toolResponse: CodexHookJSONValue? = nil,
         prompt: String? = nil,
         stopHookActive: Bool? = nil,
-        lastAssistantMessage: String? = nil
+        lastAssistantMessage: String? = nil,
+        title: String? = nil,
+        conversationTitle: String? = nil,
+        threadTitle: String? = nil
     ) {
         self.cwd = cwd
         self.hookEventName = hookEventName
@@ -207,6 +216,9 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
         self.prompt = prompt
         self.stopHookActive = stopHookActive
         self.lastAssistantMessage = lastAssistantMessage
+        self.title = title
+        self.conversationTitle = conversationTitle
+        self.threadTitle = threadTitle
     }
 
     public init(from decoder: any Decoder) throws {
@@ -231,6 +243,9 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
         prompt = try container.decodeIfPresent(String.self, forKey: .prompt)
         stopHookActive = try container.decodeIfPresent(Bool.self, forKey: .stopHookActive)
         lastAssistantMessage = try container.decodeIfPresent(String.self, forKey: .lastAssistantMessage)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        conversationTitle = try container.decodeIfPresent(String.self, forKey: .conversationTitle)
+        threadTitle = try container.decodeIfPresent(String.self, forKey: .threadTitle)
     }
 }
 
@@ -380,14 +395,25 @@ public extension CodexHookPayload {
 
     var sessionTitle: String {
         if agentTool == .copilotCLI,
+           let conversationTitle = friendlyConversationTitle {
+            return conversationTitle
+        }
+        if agentTool == .copilotCLI,
            let promptTitle = friendlyPromptTitle {
             return promptTitle
         }
         return "\(agentDisplayName) · \(workspaceName)"
     }
 
+    var friendlyConversationTitle: String? {
+        friendlyTitle(from: title ?? conversationTitle ?? threadTitle)
+    }
+
     var friendlyPromptTitle: String? {
-        let raw = prompt ?? promptPreview
+        friendlyTitle(from: prompt ?? promptPreview)
+    }
+
+    private func friendlyTitle(from raw: String?) -> String? {
         guard let title = raw?
             .trimmingCharacters(in: .whitespacesAndNewlines),
               !title.isEmpty else {

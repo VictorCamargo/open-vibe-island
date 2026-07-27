@@ -503,6 +503,7 @@ public final class BridgeServer: @unchecked Sendable {
             ensureSessionExists(for: payload)
             synchronizeJumpTarget(for: payload)
             synchronizeCodexMetadata(for: payload)
+            synchronizeCodexTitle(for: payload)
             let prompt = payload.prompt ?? payload.promptPreview ?? "User submitted a prompt to \(payload.agentDisplayName)."
             emit(
                 .activityUpdated(
@@ -520,6 +521,7 @@ public final class BridgeServer: @unchecked Sendable {
             ensureSessionExists(for: payload)
             synchronizeJumpTarget(for: payload)
             synchronizeCodexMetadata(for: payload)
+            synchronizeCodexTitle(for: payload)
 
             let command = payload.commandPreview ?? "Bash command"
 
@@ -548,6 +550,7 @@ public final class BridgeServer: @unchecked Sendable {
             ensureSessionExists(for: payload)
             synchronizeJumpTarget(for: payload)
             synchronizeCodexMetadata(for: payload)
+            synchronizeCodexTitle(for: payload)
 
             emit(
                 .permissionRequested(
@@ -576,6 +579,7 @@ public final class BridgeServer: @unchecked Sendable {
             ensureSessionExists(for: payload)
             synchronizeJumpTarget(for: payload)
             synchronizeCodexMetadata(for: payload)
+            synchronizeCodexTitle(for: payload)
             let command = payload.commandPreview ?? "Bash command"
             let responsePreview = payload.toolResponsePreview
             let summary = responsePreview.map { "Bash finished: \(command) · \($0)" } ?? "Bash finished: \(command)"
@@ -598,6 +602,7 @@ public final class BridgeServer: @unchecked Sendable {
                 synchronizeJumpTarget(for: payload)
             }
             synchronizeCodexMetadata(for: payload)
+            synchronizeCodexTitle(for: payload)
             let summary = payload.lastAssistantMessage ?? payload.assistantMessagePreview ?? "\(payload.agentDisplayName) completed the turn."
 
             emit(
@@ -1893,6 +1898,48 @@ public final class BridgeServer: @unchecked Sendable {
                 )
             )
         )
+    }
+
+    private func synchronizeCodexTitle(for payload: CodexHookPayload) {
+        guard payload.agentTool == .copilotCLI,
+              let existingSession = localState.session(id: payload.sessionID) else {
+            return
+        }
+
+        let explicitTitle = payload.friendlyConversationTitle
+        let candidateTitle = explicitTitle ?? payload.friendlyPromptTitle
+        guard let candidateTitle,
+              candidateTitle != existingSession.title,
+              explicitTitle != nil || Self.shouldReplaceCopilotFallbackTitle(existingSession.title, sessionID: payload.sessionID) else {
+            return
+        }
+
+        emit(
+            .sessionStarted(
+                SessionStarted(
+                    sessionID: existingSession.id,
+                    title: candidateTitle,
+                    tool: existingSession.tool,
+                    origin: existingSession.origin,
+                    initialPhase: existingSession.phase,
+                    summary: existingSession.summary,
+                    timestamp: .now,
+                    jumpTarget: existingSession.jumpTarget,
+                    codexMetadata: existingSession.codexMetadata
+                )
+            )
+        )
+    }
+
+    static func shouldReplaceCopilotFallbackTitle(_ title: String, sessionID: String) -> Bool {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed == sessionID {
+            return true
+        }
+        if UUID(uuidString: trimmed) != nil {
+            return true
+        }
+        return false
     }
 
     private func ensureClaudeSessionExists(for payload: ClaudeHookPayload) {

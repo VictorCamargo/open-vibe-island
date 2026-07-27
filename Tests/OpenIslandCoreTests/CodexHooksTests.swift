@@ -151,6 +151,27 @@ struct CodexHooksTests {
     }
 
     @Test
+    func copilotSessionTitlePrefersConversationTitle() throws {
+        let data = """
+        {
+          "cwd": "/Users/u/project",
+          "hook_event_name": "UserPromptSubmit",
+          "model": "unknown",
+          "permission_mode": "default",
+          "session_id": "bbd19fd0-87da-47d0-b3dd-974dca1f0000",
+          "source": "copilot",
+          "conversation_title": "Validar ideia de notificações do Cop",
+          "prompt": "oi"
+        }
+        """.data(using: .utf8)!
+
+        let payload = try JSONDecoder().decode(CodexHookPayload.self, from: data)
+
+        #expect(payload.friendlyConversationTitle == "Validar ideia de notificações do Cop")
+        #expect(payload.sessionTitle == "Validar ideia de notificações do Cop")
+    }
+
+    @Test
     func codexPermissionRequestPayloadAcceptsDescriptionOnlyToolInput() throws {
         let data = """
         {

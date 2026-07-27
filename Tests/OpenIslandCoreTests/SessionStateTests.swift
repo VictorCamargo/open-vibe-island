@@ -860,6 +860,58 @@ struct SessionStateTests {
     }
 
     @Test
+    func copilotHookRetitlesExistingUUIDSessionFromConversationTitle() async throws {
+        let socketURL = BridgeSocketLocation.uniqueTestURL()
+        let server = BridgeServer(socketURL: socketURL)
+        try server.start()
+        defer { server.stop() }
+
+        let observer = LocalBridgeClient(socketURL: socketURL)
+        let stream = try observer.connect()
+        defer { observer.disconnect() }
+        try await observer.send(.registerClient(role: .observer))
+
+        let sessionID = "bbd19fd0-87da-47d0-b3dd-974dca1f0000"
+        let startedPayload = CodexHookPayload(
+            cwd: "/tmp/worktree",
+            hookEventName: .sessionStart,
+            model: "unknown",
+            permissionMode: .default,
+            sessionID: sessionID,
+            terminalApp: "GitHub Copilot",
+            transcriptPath: nil,
+            source: "copilot",
+            title: sessionID
+        )
+        _ = try BridgeCommandClient(socketURL: socketURL).send(.processCodexHook(startedPayload))
+
+        let promptPayload = CodexHookPayload(
+            cwd: "/tmp/worktree",
+            hookEventName: .userPromptSubmit,
+            model: "unknown",
+            permissionMode: .default,
+            sessionID: sessionID,
+            terminalApp: "GitHub Copilot",
+            transcriptPath: nil,
+            source: "copilot",
+            prompt: "oi",
+            conversationTitle: "Validar ideia de notificações do Cop"
+        )
+        _ = try BridgeCommandClient(socketURL: socketURL).send(.processCodexHook(promptPayload))
+
+        var iterator = stream.makeAsyncIterator()
+        let startedEvent = try await nextEvent(from: &iterator)
+        let metadataEvent = try await nextEvent(from: &iterator)
+        let retitleEvent = try await nextEvent(from: &iterator)
+        let activityEvent = try await nextEvent(from: &iterator)
+
+        #expect(startedEvent.sessionStarted?.title == sessionID)
+        #expect(metadataEvent.trackedMetadataUpdate?.codexMetadata.lastUserPrompt == "oi")
+        #expect(retitleEvent.sessionStarted?.title == "Validar ideia de notificações do Cop")
+        #expect(activityEvent.activityUpdate?.summary == "Prompt: oi")
+    }
+
+    @Test
     func cursorHookPreservesToolMetadataAcrossNonStopEvents() async throws {
         let socketURL = BridgeSocketLocation.uniqueTestURL()
         let server = BridgeServer(socketURL: socketURL)
@@ -1500,6 +1552,14 @@ private func nextEvent(
 }
 
 private extension AgentEvent {
+    var sessionStarted: SessionStarted? {
+        if case let .sessionStarted(payload) = self {
+            payload
+        } else {
+            nil
+        }
+    }
+
     var isSessionStarted: Bool {
         if case .sessionStarted = self {
             true

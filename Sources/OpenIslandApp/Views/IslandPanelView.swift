@@ -236,11 +236,12 @@ struct IslandPanelView: View {
             ZStack(alignment: .top) {
                 if shouldRenderOpenedSurface {
                     openedSurface(width: openedWidth, height: openedHeight)
-                        .opacity(usesOpenedVisualState ? 1 : 0)
-                        .scaleEffect(
-                            x: usesOpenedVisualState ? 1 : expansionScaleX,
-                            y: usesOpenedVisualState ? 1 : expansionScaleY,
-                            anchor: .top
+                        .modifier(
+                            IslandSurfaceExpansionModifier(
+                                scaleX: usesOpenedVisualState ? 1 : expansionScaleX,
+                                scaleY: usesOpenedVisualState ? 1 : expansionScaleY,
+                                opacity: usesOpenedVisualState ? 1 : 0
+                            )
                         )
                         .transition(openedSurfaceTransition)
                         .allowsHitTesting(usesOpenedVisualState)

@@ -50,6 +50,10 @@ private struct AutoHeightScrollView<Content: View>: View {
 // MARK: - Row Height Estimation
 
 extension AgentSession {
+    var canArchiveFromIsland: Bool {
+        isRemote || (phase == .completed && !phase.requiresAttention)
+    }
+
     /// Estimated row height matching `IslandSessionRow` layout for viewport sizing.
     func estimatedIslandRowHeight(at date: Date) -> CGFloat {
         let presence = islandPresence(at: date)
@@ -633,7 +637,7 @@ struct IslandPanelView: View {
                                 onReply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
                                     ? { model.replyToSession(session, text: $0) } : nil,
                                 onJump: { model.jumpToSession(session) },
-                                onDismiss: session.isRemote ? { model.dismissSession(session.id) } : nil
+                                onDismiss: session.canArchiveFromIsland ? { model.dismissSession(session.id) } : nil
                             )
                         }
                     }
@@ -683,7 +687,7 @@ struct IslandPanelView: View {
                         onReply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
                             ? { model.replyToSession(session, text: $0) } : nil,
                         onJump: { model.jumpToSession(session) },
-                        onDismiss: session.isRemote ? { model.dismissSession(session.id) } : nil
+                        onDismiss: session.canArchiveFromIsland ? { model.dismissSession(session.id) } : nil
                     )
                 }
             }
@@ -1299,7 +1303,10 @@ private struct IslandSessionRow: View {
                     .frame(minWidth: 30, alignment: .trailing)
                 detailToggleButton(isOpen: showsDetail)
                 if let onDismiss {
-                    DismissButton(action: onDismiss)
+                    ArchiveButton(
+                        isVisible: presentation == .notification || isHighlighted,
+                        action: onDismiss
+                    )
                 }
             }
         }
@@ -1683,12 +1690,21 @@ private struct IslandSessionRow: View {
 
     // MARK: - Question action area
 
+    @ViewBuilder
     private var questionActionBody: some View {
-        StructuredQuestionPromptView(
-            prompt: session.questionPrompt,
-            lang: lang,
-            onAnswer: { onAnswer?($0) }
-        )
+        if session.tool == .copilotCLI {
+            CopilotTerminalQuestionPromptCard(
+                prompt: session.questionPrompt,
+                lang: lang,
+                onJump: onJump
+            )
+        } else {
+            StructuredQuestionPromptView(
+                prompt: session.questionPrompt,
+                lang: lang,
+                onAnswer: { onAnswer?($0) }
+            )
+        }
     }
 
     // MARK: - Completion action area
@@ -2034,6 +2050,98 @@ private struct IslandSessionRow: View {
         case .ready:
             presence == .inactive ? .white.opacity(0.46) : statusTint(for: presence)
         }
+    }
+}
+
+private struct CopilotTerminalQuestionPromptCard: View {
+    let prompt: QuestionPrompt?
+    var lang: LanguageManager = .shared
+    let onJump: () -> Void
+
+    private let accent = Color(red: 1.0, green: 0.56, blue: 0.18)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 8) {
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(accent)
+
+                Text("Copilot is waiting for an answer")
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(accent)
+
+                Spacer(minLength: 8)
+
+                Button(action: onJump) {
+                    HStack(spacing: 4) {
+                        Text("Please answer in the terminal")
+                            .lineLimit(1)
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(V6Palette.paper.opacity(0.72))
+                }
+                .buttonStyle(.plain)
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
+                Text(questionText)
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(V6Palette.paper.opacity(0.94))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if !optionLines.isEmpty {
+                    VStack(alignment: .leading, spacing: 5) {
+                        ForEach(optionLines, id: \.self) { line in
+                            Text(line)
+                                .font(.system(size: 12.5, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(V6Palette.paper.opacity(0.58))
+                                .lineLimit(1)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 13)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color(red: 0.20, green: 0.105, blue: 0.035).opacity(0.92))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(accent.opacity(0.14), lineWidth: 1)
+        )
+    }
+
+    private var questionText: String {
+        let trimmed = rawPromptLines.first?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (trimmed?.isEmpty == false ? trimmed! : "Copilot needs your input.")
+    }
+
+    private var optionLines: [String] {
+        if let prompt, !prompt.options.isEmpty {
+            return prompt.options.enumerated().map { index, option in
+                "\(index + 1). \(option)"
+            }
+        }
+
+        return Array(rawPromptLines.dropFirst())
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    private var rawPromptLines: [String] {
+        let text = prompt?.title.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let lines = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map(String.init)
+        return lines.isEmpty ? [""] : lines
     }
 }
 
@@ -2712,17 +2820,27 @@ extension MarkdownUI.Theme {
         }
 }
 
-private struct DismissButton: View {
+private struct ArchiveButton: View {
+    let isVisible: Bool
     let action: () -> Void
     @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 12))
-                .foregroundStyle(.white.opacity(isHovered ? 0.8 : 0.4))
+            Image(systemName: "archivebox.fill")
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(.white.opacity(isHovered ? 0.82 : 0.52))
+                .frame(width: 28, height: 28)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(.white.opacity(isHovered ? 0.11 : 0.065))
+                )
         }
         .buttonStyle(.plain)
+        .opacity(isVisible ? 1 : 0)
+        .allowsHitTesting(isVisible)
+        .accessibilityHidden(!isVisible)
+        .accessibilityLabel("Archive session")
         .onHover { isHovered = $0 }
     }
 }

@@ -138,9 +138,10 @@ final class TerminalJumpServiceTests: XCTestCase {
 
     func testGhosttyJumpDoesNotOpenNewTabWhenPreciseTargetMissesInRunningApp() throws {
         let openedArguments = OpenedArgumentsBox()
+        let ghosttyURL = try makeGhosttyAppFixture(version: "1.3.0")
         let service = TerminalJumpService(
             applicationResolver: { bundleIdentifier in
-                bundleIdentifier == "com.mitchellh.ghostty" ? URL(fileURLWithPath: "/Applications/Ghostty.app") : nil
+                bundleIdentifier == "com.mitchellh.ghostty" ? ghosttyURL : nil
             },
             appRunningChecker: { bundleIdentifier in
                 bundleIdentifier == "com.mitchellh.ghostty"
@@ -165,11 +166,45 @@ final class TerminalJumpServiceTests: XCTestCase {
         XCTAssertEqual(openedArguments.values, [["-b", "com.mitchellh.ghostty"]])
     }
 
-    func testGhosttyJumpFallsBackToActivationWhenAppleScriptFails() throws {
+    func testGhosttyJumpReportsUnsupportedVersionBeforeAppleScriptTargeting() throws {
         let openedArguments = OpenedArgumentsBox()
+        let ghosttyURL = try makeGhosttyAppFixture(version: "1.2.2")
         let service = TerminalJumpService(
             applicationResolver: { bundleIdentifier in
-                bundleIdentifier == "com.mitchellh.ghostty" ? URL(fileURLWithPath: "/Applications/Ghostty.app") : nil
+                bundleIdentifier == "com.mitchellh.ghostty" ? ghosttyURL : nil
+            },
+            appRunningChecker: { bundleIdentifier in
+                bundleIdentifier == "com.mitchellh.ghostty"
+            },
+            openAction: { arguments in
+                openedArguments.values.append(arguments)
+            },
+            appleScriptRunner: { _ in
+                XCTFail("Ghostty 1.2 should not run AppleScript targeting.")
+                return "matched"
+            }
+        )
+
+        let result = try service.jump(
+            to: JumpTarget(
+                terminalApp: "Ghostty",
+                workspaceName: "open-island",
+                paneTitle: "Claude open-island",
+                workingDirectory: "/Users/wangruobing/Personal/open-island",
+                terminalTTY: "/dev/ttys002"
+            )
+        )
+
+        XCTAssertEqual(result, "Activated Ghostty. Exact tab targeting requires Ghostty 1.3 or newer.")
+        XCTAssertEqual(openedArguments.values, [["-b", "com.mitchellh.ghostty"]])
+    }
+
+    func testGhosttyJumpFallsBackToActivationWhenAppleScriptFails() throws {
+        let openedArguments = OpenedArgumentsBox()
+        let ghosttyURL = try makeGhosttyAppFixture(version: "1.3.0")
+        let service = TerminalJumpService(
+            applicationResolver: { bundleIdentifier in
+                bundleIdentifier == "com.mitchellh.ghostty" ? ghosttyURL : nil
             },
             appRunningChecker: { bundleIdentifier in
                 bundleIdentifier == "com.mitchellh.ghostty"
@@ -665,6 +700,21 @@ private func focusedGhosttyTerminalID() throws -> String {
     """
 
     return try runAppleScript(script)
+}
+
+private func makeGhosttyAppFixture(version: String) throws -> URL {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("open-island-ghostty-\(UUID().uuidString)", isDirectory: true)
+    let appURL = root.appendingPathComponent("Ghostty.app", isDirectory: true)
+    let contentsURL = appURL.appendingPathComponent("Contents", isDirectory: true)
+    try FileManager.default.createDirectory(at: contentsURL, withIntermediateDirectories: true)
+    let plistURL = contentsURL.appendingPathComponent("Info.plist")
+    let plist: NSDictionary = [
+        "CFBundleIdentifier": "com.mitchellh.ghostty",
+        "CFBundleShortVersionString": version,
+    ]
+    plist.write(to: plistURL, atomically: true)
+    return appURL
 }
 
 private func runAppleScript(_ script: String) throws -> String {

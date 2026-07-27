@@ -44,3 +44,7 @@ System Settings > Privacy & Security > Accessibility
 ```
 
 Allow `Open Island Dev` to control the terminal app you use.
+
+Ghostty tab/pane targeting requires Ghostty 1.3.0 or newer. Older Ghostty
+versions can only be activated; they do not expose the AppleScript API used to
+select a specific tab or terminal.

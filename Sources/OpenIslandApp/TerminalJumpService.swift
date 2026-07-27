@@ -365,6 +365,10 @@ struct TerminalJumpService {
                     return "Focused the matching cmux terminal."
                 }
             case "com.mitchellh.ghostty":
+                if !ghosttySupportsAppleScript(bundleIdentifier: resolvedBundleIdentifier ?? descriptor.bundleIdentifier) {
+                    try openAction(["-b", resolvedBundleIdentifier ?? descriptor.bundleIdentifier])
+                    return "Activated Ghostty. Exact tab targeting requires Ghostty 1.3 or newer."
+                }
                 if (try? jumpToGhosttyTerminal(target)) == true {
                     return "Focused the matching Ghostty terminal."
                 }
@@ -805,6 +809,22 @@ struct TerminalJumpService {
 
     private func jumpToGhosttyTerminal(_ target: JumpTarget) throws -> Bool {
         try runAppleScript(ghosttyJumpScript(for: target)) == "matched"
+    }
+
+    private func ghosttySupportsAppleScript(bundleIdentifier: String) -> Bool {
+        guard let infoPath = applicationResolver(bundleIdentifier)?
+            .appendingPathComponent("Contents/Info.plist")
+            .path,
+            let version = NSDictionary(contentsOfFile: infoPath)?["CFBundleShortVersionString"] as? String,
+            !version.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return true
+        }
+
+        return Self.compareVersion(version, atLeast: "1.3.0")
+    }
+
+    static func compareVersion(_ version: String, atLeast minimum: String) -> Bool {
+        version.compare(minimum, options: .numeric) != .orderedAscending
     }
 
     func ghosttyJumpScript(for target: JumpTarget) -> String {

@@ -545,6 +545,22 @@ public extension CodexHookPayload {
         title
     }
 
+    var isUserInputNotification: Bool {
+        if notificationType == "elicitation_dialog" {
+            return true
+        }
+
+        let haystack = [notificationTitle, notificationMessage]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: " ")
+
+        return haystack.contains("asking user")
+            || haystack.contains("question")
+            || haystack.contains("needs your input")
+            || haystack.contains("need your input")
+            || haystack.contains("waiting for input")
+    }
+
     var assistantMessagePreview: String? {
         clipped(lastAssistantMessage)
     }

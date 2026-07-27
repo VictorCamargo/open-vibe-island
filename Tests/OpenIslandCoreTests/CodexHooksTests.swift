@@ -222,6 +222,25 @@ struct CodexHooksTests {
         #expect(payload.notificationType == "elicitation_dialog")
         #expect(payload.notificationTitle == "Asking user")
         #expect(payload.notificationMessage == "What programming language do you want to use?")
+        #expect(payload.isUserInputNotification == true)
+    }
+
+    @Test
+    func copilotNotificationDetectsUserInputFromTextFallback() {
+        let payload = CodexHookPayload(
+            cwd: "/Users/u/project",
+            hookEventName: .notification,
+            model: "unknown",
+            permissionMode: .default,
+            sessionID: "copilot-1",
+            transcriptPath: nil,
+            source: "copilot",
+            title: "Question",
+            notificationType: "agent_idle",
+            notificationMessage: "Copilot needs your input before continuing."
+        )
+
+        #expect(payload.isUserInputNotification == true)
     }
 
     @Test

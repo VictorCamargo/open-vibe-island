@@ -602,8 +602,7 @@ public final class BridgeServer: @unchecked Sendable {
             synchronizeCodexMetadata(for: payload)
             synchronizeCodexTitle(for: payload)
 
-            switch payload.notificationType {
-            case "elicitation_dialog":
+            if payload.isUserInputNotification {
                 let message = payload.notificationMessage?.trimmingCharacters(in: .whitespacesAndNewlines)
                 let title = payload.notificationTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
                 let promptTitle = message?.isEmpty == false
@@ -619,9 +618,6 @@ public final class BridgeServer: @unchecked Sendable {
                         )
                     )
                 )
-
-            default:
-                break
             }
 
             send(.response(.acknowledged), to: clientID)

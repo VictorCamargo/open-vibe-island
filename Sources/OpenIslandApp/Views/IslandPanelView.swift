@@ -94,6 +94,18 @@ private struct ConditionalDrawingGroup: ViewModifier {
     }
 }
 
+private struct IslandSurfaceExpansionModifier: ViewModifier {
+    let scaleX: CGFloat
+    let scaleY: CGFloat
+    let opacity: Double
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(x: scaleX, y: scaleY, anchor: .top)
+            .opacity(opacity)
+    }
+}
+
 // MARK: - Main island view
 
 struct IslandPanelView: View {
@@ -107,6 +119,8 @@ struct IslandPanelView: View {
 
     var model: AppModel
     private var lang: LanguageManager { model.lang }
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var isHovering = false
     @State private var showingQuitConfirmation = false
@@ -211,12 +225,25 @@ struct IslandPanelView: View {
         let outerBottomPadding: CGFloat = 0
         let openedWidth = max(0, layoutWidth - outerHorizontalPadding)
         let openedHeight = max(closedNotchHeight, layoutHeight - outerBottomPadding)
+        let expansionScaleX = reduceMotion ? 1 : closedSurfaceWidth / max(openedWidth, closedSurfaceWidth)
+        let expansionScaleY = reduceMotion ? 1 : closedNotchHeight / max(openedHeight, closedNotchHeight)
+        let openedSurfaceTransition = AnyTransition.modifier(
+            active: IslandSurfaceExpansionModifier(scaleX: expansionScaleX, scaleY: expansionScaleY, opacity: 0),
+            identity: IslandSurfaceExpansionModifier(scaleX: 1, scaleY: 1, opacity: 1)
+        )
 
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
                 if shouldRenderOpenedSurface {
                     openedSurface(width: openedWidth, height: openedHeight)
-                        .opacity(usesOpenedVisualState ? 1 : 0)
+                        .modifier(
+                            IslandSurfaceExpansionModifier(
+                                scaleX: usesOpenedVisualState ? 1 : expansionScaleX,
+                                scaleY: usesOpenedVisualState ? 1 : expansionScaleY,
+                                opacity: usesOpenedVisualState ? 1 : 0
+                            )
+                        )
+                        .transition(openedSurfaceTransition)
                         .allowsHitTesting(usesOpenedVisualState)
                 }
 
@@ -332,6 +359,21 @@ struct IslandPanelView: View {
 
     private var closedNotchWidth: CGFloat {
         (targetOverlayScreen ?? NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }))?.notchSize.width ?? NSScreen.externalDisplayNotchWidth
+    }
+
+    private var closedSurfaceWidth: CGFloat {
+        guard isExternalDisplayPlacement else {
+            return 44 + closedNotchWidth + 44
+        }
+
+        let pad = closedNotchHeight / 2
+        let glyphWidth: CGFloat = 24
+        let label = model.islandClosedLabel()
+        let labelWidth = label.map(V6CenterLabelView.intrinsicWidth(of:)) ?? 0
+        let rightWidth = model.islandClosedRightSlotContent().map(V6RightSlotView.intrinsicWidth(of:)) ?? 0
+        let labelBlock = label == nil ? 0 : 6 + labelWidth
+        let rightBlock = rightWidth > 0 ? 6 + rightWidth : 0
+        return max(70, pad * 2 + glyphWidth + labelBlock + rightBlock)
     }
 
     private var closedNotchHeight: CGFloat {

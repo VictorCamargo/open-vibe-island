@@ -80,13 +80,13 @@ struct OverlayPanelControllerTests {
     }
 
     @Test
-    func clickOpensActivateThePanel() {
+    func userInitiatedOpensActivateThePanel() {
         #expect(OverlayPanelController.shouldActivatePanel(for: .click))
+        #expect(OverlayPanelController.shouldActivatePanel(for: .hover))
     }
 
     @Test
     func passiveOpensDoNotActivateThePanel() {
-        #expect(!OverlayPanelController.shouldActivatePanel(for: .hover))
         #expect(!OverlayPanelController.shouldActivatePanel(for: .notification))
         #expect(!OverlayPanelController.shouldActivatePanel(for: .boot))
         #expect(!OverlayPanelController.shouldActivatePanel(for: nil))

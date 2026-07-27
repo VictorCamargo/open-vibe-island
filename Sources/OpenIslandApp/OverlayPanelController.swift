@@ -43,7 +43,7 @@ final class OverlayPanelController {
     }
 
     nonisolated static func shouldActivatePanel(for reason: NotchOpenReason?) -> Bool {
-        reason == .click
+        reason == .click || reason == .hover
     }
 
     func availableDisplayOptions() -> [OverlayDisplayOption] {

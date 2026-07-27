@@ -924,14 +924,14 @@ struct TerminalJumpService {
             if "\(terminalSessionID)" is "" then
                 if targetWindow is not missing value then
                     try
-                        set index of targetWindow to 1
+                        activate window targetWindow
                     end try
                     activate
                     delay \(Self.ghosttyWindowActivationDelay)
                 end if
 
                 if targetTab is not missing value then
-                    set selected tab of targetWindow to targetTab
+                    select tab targetTab
                     delay \(Self.ghosttyWindowActivationDelay)
                 end if
 
@@ -943,14 +943,14 @@ struct TerminalJumpService {
             repeat \(Self.ghosttyFocusAttempts) times
                 if targetWindow is not missing value then
                     try
-                        set index of targetWindow to 1
+                        activate window targetWindow
                     end try
                     activate
                     delay \(Self.ghosttyWindowActivationDelay)
                 end if
 
                 if targetTab is not missing value then
-                    set selected tab of targetWindow to targetTab
+                    select tab targetTab
                     delay \(Self.ghosttyWindowActivationDelay)
                 end if
 

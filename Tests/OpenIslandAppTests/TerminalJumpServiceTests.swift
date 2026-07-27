@@ -24,8 +24,8 @@ final class TerminalJumpServiceTests: XCTestCase {
         let script = TerminalJumpService().ghosttyJumpScript(for: target)
 
         XCTAssertTrue(script.contains("activate"))
-        XCTAssertTrue(script.contains("set index of targetWindow to 1"))
-        XCTAssertTrue(script.contains("set selected tab of targetWindow to targetTab"))
+        XCTAssertTrue(script.contains("activate window targetWindow"))
+        XCTAssertTrue(script.contains("select tab targetTab"))
         XCTAssertTrue(script.contains("focus targetTerminal"))
         XCTAssertTrue(script.contains("repeat 3 times"))
         XCTAssertTrue(script.contains("delay 0.04"))

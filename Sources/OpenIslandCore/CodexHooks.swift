@@ -6,6 +6,7 @@ public enum CodexHookEventName: String, Codable, Sendable {
     case permissionRequest = "PermissionRequest"
     case postToolUse = "PostToolUse"
     case userPromptSubmit = "UserPromptSubmit"
+    case notification = "Notification"
     case stop = "Stop"
 }
 
@@ -144,6 +145,8 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
     public var title: String?
     public var conversationTitle: String?
     public var threadTitle: String?
+    public var notificationType: String?
+    public var notificationMessage: String?
 
     private enum CodingKeys: String, CodingKey {
         case cwd
@@ -169,6 +172,8 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
         case title
         case conversationTitle = "conversation_title"
         case threadTitle = "thread_title"
+        case notificationType = "notification_type"
+        case notificationMessage = "message"
     }
 
     public init(
@@ -194,7 +199,9 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
         lastAssistantMessage: String? = nil,
         title: String? = nil,
         conversationTitle: String? = nil,
-        threadTitle: String? = nil
+        threadTitle: String? = nil,
+        notificationType: String? = nil,
+        notificationMessage: String? = nil
     ) {
         self.cwd = cwd
         self.hookEventName = hookEventName
@@ -219,6 +226,8 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
         self.title = title
         self.conversationTitle = conversationTitle
         self.threadTitle = threadTitle
+        self.notificationType = notificationType
+        self.notificationMessage = notificationMessage
     }
 
     public init(from decoder: any Decoder) throws {
@@ -246,6 +255,8 @@ public struct CodexHookPayload: Equatable, Codable, Sendable {
         title = try container.decodeIfPresent(String.self, forKey: .title)
         conversationTitle = try container.decodeIfPresent(String.self, forKey: .conversationTitle)
         threadTitle = try container.decodeIfPresent(String.self, forKey: .threadTitle)
+        notificationType = try container.decodeIfPresent(String.self, forKey: .notificationType)
+        notificationMessage = try container.decodeIfPresent(String.self, forKey: .notificationMessage)
     }
 }
 
@@ -475,6 +486,8 @@ public extension CodexHookPayload {
             return "\(agentDisplayName) reported a Bash result in \(workspaceName)."
         case .userPromptSubmit:
             return "\(agentDisplayName) received a new prompt in \(workspaceName)."
+        case .notification:
+            return notificationMessage ?? "\(agentDisplayName) needs attention in \(workspaceName)."
         case .stop:
             return "\(agentDisplayName) completed a turn in \(workspaceName)."
         }
@@ -526,6 +539,10 @@ public extension CodexHookPayload {
 
     var promptPreview: String? {
         clipped(prompt)
+    }
+
+    var notificationTitle: String? {
+        title
     }
 
     var assistantMessagePreview: String? {
@@ -663,7 +680,9 @@ public extension CodexHookPayload {
             // no AppleScript locator is available, so skip entirely.
             useLocator = false
         } else if let terminalApp = payload.terminalApp, isGhosttyTerminalApp(terminalApp) {
-            if payload.hookEventName == .sessionStart || payload.hookEventName == .userPromptSubmit {
+            if payload.hookEventName == .sessionStart
+                || payload.hookEventName == .userPromptSubmit
+                || payload.hookEventName == .notification {
                 useLocator = true
             } else {
                 payload.terminalSessionID = nil

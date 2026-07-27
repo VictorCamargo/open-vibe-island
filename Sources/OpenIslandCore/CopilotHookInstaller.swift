@@ -18,6 +18,8 @@ public enum CopilotHookInstaller {
     private static let eventSpecs: [(name: String, timeout: Int)] = [
         ("SessionStart", 45),
         ("UserPromptSubmit", 45),
+        ("PermissionRequest", 600),
+        ("Notification", 45),
         ("Stop", 45),
     ]
 

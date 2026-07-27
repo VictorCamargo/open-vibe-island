@@ -596,6 +596,36 @@ public final class BridgeServer: @unchecked Sendable {
             )
             send(.response(.acknowledged), to: clientID)
 
+        case .notification:
+            ensureSessionExists(for: payload)
+            synchronizeJumpTarget(for: payload)
+            synchronizeCodexMetadata(for: payload)
+            synchronizeCodexTitle(for: payload)
+
+            switch payload.notificationType {
+            case "elicitation_dialog":
+                let message = payload.notificationMessage?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let title = payload.notificationTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let promptTitle = message?.isEmpty == false
+                    ? message!
+                    : (title?.isEmpty == false ? title! : "\(payload.agentDisplayName) needs your input.")
+
+                emit(
+                    .questionAsked(
+                        QuestionAsked(
+                            sessionID: payload.sessionID,
+                            prompt: QuestionPrompt(title: promptTitle, options: []),
+                            timestamp: .now
+                        )
+                    )
+                )
+
+            default:
+                break
+            }
+
+            send(.response(.acknowledged), to: clientID)
+
         case .stop:
             ensureSessionExists(for: payload)
             if payload.source != "copilot" {
@@ -2101,7 +2131,7 @@ public final class BridgeServer: @unchecked Sendable {
         }
 
         switch hookEventName {
-        case .userPromptSubmit, .postToolUse, .stop:
+        case .userPromptSubmit, .postToolUse, .notification, .stop:
             return nil
         case .sessionStart, .preToolUse, .permissionRequest:
             return existing
@@ -2421,7 +2451,7 @@ public final class BridgeServer: @unchecked Sendable {
         }
 
         switch hookEventName {
-        case .userPromptSubmit, .postToolUse, .stop:
+        case .userPromptSubmit, .postToolUse, .notification, .stop:
             return nil
         case .sessionStart, .preToolUse, .permissionRequest:
             return existing
@@ -2445,7 +2475,7 @@ public final class BridgeServer: @unchecked Sendable {
             response = .codexHookDirective(
                 .permissionRequest(.deny(message: message ?? "Permission denied in Open Island."))
             )
-        case (.sessionStart, _), (.postToolUse, _), (.userPromptSubmit, _), (.stop, _):
+        case (.sessionStart, _), (.postToolUse, _), (.userPromptSubmit, _), (.notification, _), (.stop, _):
             assertionFailure("Unexpected Codex hook waiting for permission.")
             response = .acknowledged
         }

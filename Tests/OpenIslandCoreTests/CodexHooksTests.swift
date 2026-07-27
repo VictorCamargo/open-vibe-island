@@ -200,6 +200,58 @@ struct CodexHooksTests {
     }
 
     @Test
+    func copilotNotificationPayloadDecodesElicitationDialog() throws {
+        let data = """
+        {
+          "cwd": "/Users/u/project",
+          "hook_event_name": "Notification",
+          "model": "unknown",
+          "permission_mode": "default",
+          "session_id": "copilot-1",
+          "source": "copilot",
+          "notification_type": "elicitation_dialog",
+          "title": "Asking user",
+          "message": "What programming language do you want to use?"
+        }
+        """.data(using: .utf8)!
+
+        let payload = try JSONDecoder().decode(CodexHookPayload.self, from: data)
+
+        #expect(payload.hookEventName == .notification)
+        #expect(payload.agentTool == .copilotCLI)
+        #expect(payload.notificationType == "elicitation_dialog")
+        #expect(payload.notificationTitle == "Asking user")
+        #expect(payload.notificationMessage == "What programming language do you want to use?")
+    }
+
+    @Test
+    func copilotGhosttyNotificationUsesFocusedTerminalLocator() {
+        let payload = CodexHookPayload(
+            cwd: "/Users/u/project",
+            hookEventName: .notification,
+            model: "unknown",
+            permissionMode: .default,
+            sessionID: "copilot-1",
+            terminalApp: "Ghostty",
+            transcriptPath: nil,
+            source: "copilot",
+            notificationType: "elicitation_dialog",
+            notificationMessage: "What programming language do you want to use?"
+        ).withRuntimeContext(
+            environment: ["TERM_PROGRAM": "ghostty"],
+            currentTTYProvider: { nil },
+            terminalLocatorProvider: { terminalApp in
+                #expect(terminalApp == "Ghostty")
+                return (sessionID: "ghostty-terminal-1", tty: nil, title: "GitHub Copilot")
+            },
+            warpPaneResolver: { _ in nil }
+        )
+
+        #expect(payload.terminalSessionID == "ghostty-terminal-1")
+        #expect(payload.terminalTitle == "GitHub Copilot")
+    }
+
+    @Test
     func codexHookOutputEncoderEncodesPermissionRequestAllowDecision() throws {
         let output = try CodexHookOutputEncoder.standardOutput(
             for: .codexHookDirective(.permissionRequest(.allow))

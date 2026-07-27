@@ -11,7 +11,9 @@ struct CopilotHookInstallerTests {
         let hooks = try #require(root["hooks"] as? [String: [[String: Any]]])
 
         #expect(command == "'/tmp/OpenIslandHooks' --source copilot")
-        #expect(Set(hooks.keys) == ["SessionStart", "UserPromptSubmit", "Stop"])
+        #expect(Set(hooks.keys) == ["SessionStart", "UserPromptSubmit", "PermissionRequest", "Notification", "Stop"])
         #expect(hooks["Stop"]?.first?["command"] as? String == command)
+        #expect(hooks["Notification"]?.first?["command"] as? String == command)
+        #expect(hooks["PermissionRequest"]?.first?["timeoutSec"] as? Int == 600)
     }
 }

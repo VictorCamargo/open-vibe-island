@@ -25,7 +25,7 @@ final class TerminalJumpServiceTests: XCTestCase {
 
         XCTAssertTrue(script.contains("activate"))
         XCTAssertTrue(script.contains("set index of targetWindow to 1"))
-        XCTAssertTrue(script.contains("select tab targetTab"))
+        XCTAssertTrue(script.contains("set selected tab of targetWindow to targetTab"))
         XCTAssertTrue(script.contains("focus targetTerminal"))
         XCTAssertTrue(script.contains("repeat 3 times"))
         XCTAssertTrue(script.contains("delay 0.04"))
@@ -48,6 +48,7 @@ final class TerminalJumpServiceTests: XCTestCase {
 
         XCTAssertTrue(script.contains("(working directory of aTerminal as text) is \"/Users/wangruobing/Personal/open-island\""))
         XCTAssertTrue(script.contains("(name of aTerminal as text) contains \"codex ~/p/open-island\""))
+        XCTAssertTrue(script.contains("first tab of aWindow whose name contains \"codex ~/p/open-island\""))
         XCTAssertLessThan(
             script.range(of: "(name of aTerminal as text) contains \"codex ~/p/open-island\"")!.lowerBound,
             script.range(of: "(working directory of aTerminal as text) is \"/Users/wangruobing/Personal/open-island\"")!.lowerBound

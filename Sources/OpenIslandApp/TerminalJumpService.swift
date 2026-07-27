@@ -844,6 +844,17 @@ struct TerminalJumpService {
 
             if targetTerminal is missing value and "\(paneTitle)" is not "" then
                 repeat with aWindow in windows
+                    try
+                        set matchingTab to first tab of aWindow whose name contains "\(paneTitle)"
+                        set targetWindow to aWindow
+                        set targetTab to matchingTab
+                        set targetTerminal to focused terminal of matchingTab
+                    end try
+
+                    if targetTab is not missing value then
+                        exit repeat
+                    end if
+
                     repeat with aTab in tabs of aWindow
                         repeat with aTerminal in terminals of aTab
                             if (name of aTerminal as text) contains "\(paneTitle)" then
@@ -900,7 +911,7 @@ struct TerminalJumpService {
                 end if
 
                 if targetTab is not missing value then
-                    select tab targetTab
+                    set selected tab of targetWindow to targetTab
                     delay \(Self.ghosttyWindowActivationDelay)
                 end if
 
@@ -919,7 +930,7 @@ struct TerminalJumpService {
                 end if
 
                 if targetTab is not missing value then
-                    select tab targetTab
+                    set selected tab of targetWindow to targetTab
                     delay \(Self.ghosttyWindowActivationDelay)
                 end if
 

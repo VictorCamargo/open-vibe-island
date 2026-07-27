@@ -780,6 +780,12 @@ public extension CodexHookPayload {
             if bundleID == "com.github.githubapp" || (bundleID.contains("github") && bundleID.contains("copilot")) {
                 return "GitHub Copilot"
             }
+            if bundleID == "com.microsoft.vscode" {
+                return "VS Code"
+            }
+            if bundleID == "com.microsoft.vscodeinsiders" {
+                return "VS Code Insiders"
+            }
         }
 
         // TERM_PROGRAM is the only authoritative terminal signal. Each
@@ -897,6 +903,12 @@ public extension CodexHookPayload {
         }
         if command.contains("/codex.app/contents/macos/") {
             return "Codex.app"
+        }
+        if command.contains("/visual studio code - insiders.app/") || command.contains("/code - insiders.app/") {
+            return "VS Code Insiders"
+        }
+        if command.contains("/visual studio code.app/") || command.contains("/code.app/") {
+            return "VS Code"
         }
         return nil
     }

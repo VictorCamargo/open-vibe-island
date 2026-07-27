@@ -108,6 +108,50 @@ struct CodexHooksTests {
     }
 
     @Test
+    func copilotWithRuntimeContextDetectsVSCodeHost() {
+        let payload = CodexHookPayload(
+            cwd: "/Users/u/project",
+            hookEventName: .sessionStart,
+            model: "unknown",
+            permissionMode: .default,
+            sessionID: "s1",
+            transcriptPath: nil,
+            source: "copilot"
+        ).withRuntimeContext(
+            environment: ["__CFBundleIdentifier": "com.microsoft.VSCode"],
+            currentTTYProvider: { nil },
+            terminalLocatorProvider: { _ in (sessionID: nil, tty: nil, title: nil) },
+            warpPaneResolver: { _ in nil }
+        )
+
+        #expect(payload.terminalApp == "VS Code")
+        #expect(payload.agentTool == .copilotCLI)
+        #expect(payload.defaultJumpTarget.terminalApp == "VS Code")
+    }
+
+    @Test
+    func copilotWithRuntimeContextDetectsVSCodeTerminalProgram() {
+        let payload = CodexHookPayload(
+            cwd: "/Users/u/project",
+            hookEventName: .sessionStart,
+            model: "unknown",
+            permissionMode: .default,
+            sessionID: "s1",
+            transcriptPath: nil,
+            source: "copilot"
+        ).withRuntimeContext(
+            environment: ["TERM_PROGRAM": "vscode-insiders"],
+            currentTTYProvider: { nil },
+            terminalLocatorProvider: { _ in (sessionID: nil, tty: nil, title: nil) },
+            warpPaneResolver: { _ in nil }
+        )
+
+        #expect(payload.terminalApp == "VS Code Insiders")
+        #expect(payload.agentTool == .copilotCLI)
+        #expect(payload.defaultJumpTarget.terminalApp == "VS Code Insiders")
+    }
+
+    @Test
     func codexWithRuntimeContextFallsBackToProcessTreeTerminalApp() {
         let payload = CodexHookPayload(
             cwd: "/Users/u/project",

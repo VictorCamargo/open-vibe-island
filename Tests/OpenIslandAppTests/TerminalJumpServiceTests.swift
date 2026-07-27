@@ -325,6 +325,40 @@ final class TerminalJumpServiceTests: XCTestCase {
         XCTAssertTrue(openedArguments.values.isEmpty)
     }
 
+    func testVSCodeJumpFocusesWorkspaceWithCodeCLI() throws {
+        let openedArguments = OpenedArgumentsBox()
+        let processInvocations = ProcessInvocationBox()
+        let service = TerminalJumpService(
+            applicationResolver: { bundleIdentifier in
+                bundleIdentifier == "com.microsoft.VSCode" ? URL(fileURLWithPath: "/Applications/Visual Studio Code.app") : nil
+            },
+            appRunningChecker: { _ in true },
+            openAction: { arguments in
+                openedArguments.values.append(arguments)
+            },
+            appleScriptRunner: { _ in "" },
+            processRunner: { executable, arguments in
+                processInvocations.values.append((executable, arguments))
+                return true
+            }
+        )
+
+        let result = try service.jump(
+            to: JumpTarget(
+                terminalApp: "VS Code",
+                workspaceName: "open-vibe-island",
+                paneTitle: "Copilot open-vibe-island",
+                workingDirectory: "/Users/test/open-vibe-island"
+            )
+        )
+
+        XCTAssertEqual(result, "Focused the matching VS Code workspace.")
+        XCTAssertEqual(processInvocations.values.count, 1)
+        XCTAssertEqual(processInvocations.values.first?.0, "code")
+        XCTAssertEqual(processInvocations.values.first?.1, ["-r", "/Users/test/open-vibe-island"])
+        XCTAssertTrue(openedArguments.values.isEmpty)
+    }
+
     func testWarpJumpReturnsImmediatelyWhenAlreadyOnTargetPane() throws {
         let openedArguments = OpenedArgumentsBox()
         let keystroker = KeystrokeInjectorSpy()

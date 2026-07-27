@@ -842,29 +842,6 @@ struct TerminalJumpService {
                 end if
             end repeat
 
-            if targetTerminal is missing value and "\(workingDirectory)" is not "" then
-                repeat with aWindow in windows
-                    repeat with aTab in tabs of aWindow
-                        repeat with aTerminal in terminals of aTab
-                            if (working directory of aTerminal as text) is "\(workingDirectory)" then
-                                set targetWindow to aWindow
-                                set targetTab to aTab
-                                set targetTerminal to aTerminal
-                                exit repeat
-                            end if
-                        end repeat
-
-                        if targetTerminal is not missing value then
-                            exit repeat
-                        end if
-                    end repeat
-
-                    if targetTerminal is not missing value then
-                        exit repeat
-                    end if
-                end repeat
-            end if
-
             if targetTerminal is missing value and "\(paneTitle)" is not "" then
                 repeat with aWindow in windows
                     repeat with aTab in tabs of aWindow
@@ -888,11 +865,37 @@ struct TerminalJumpService {
                 end repeat
             end if
 
+            if targetTerminal is missing value and "\(workingDirectory)" is not "" then
+                repeat with aWindow in windows
+                    repeat with aTab in tabs of aWindow
+                        repeat with aTerminal in terminals of aTab
+                            if (working directory of aTerminal as text) is "\(workingDirectory)" then
+                                set targetWindow to aWindow
+                                set targetTab to aTab
+                                set targetTerminal to aTerminal
+                                exit repeat
+                            end if
+                        end repeat
+
+                        if targetTerminal is not missing value then
+                            exit repeat
+                        end if
+                    end repeat
+
+                    if targetTerminal is not missing value then
+                        exit repeat
+                    end if
+                end repeat
+            end if
+
             if targetTerminal is missing value then return ""
 
             if "\(terminalSessionID)" is "" then
                 if targetWindow is not missing value then
-                    activate window targetWindow
+                    try
+                        set index of targetWindow to 1
+                    end try
+                    activate
                     delay \(Self.ghosttyWindowActivationDelay)
                 end if
 
@@ -908,7 +911,10 @@ struct TerminalJumpService {
 
             repeat \(Self.ghosttyFocusAttempts) times
                 if targetWindow is not missing value then
-                    activate window targetWindow
+                    try
+                        set index of targetWindow to 1
+                    end try
+                    activate
                     delay \(Self.ghosttyWindowActivationDelay)
                 end if
 
@@ -920,6 +926,12 @@ struct TerminalJumpService {
                 focus targetTerminal
                 -- Ghostty updates the focused split asynchronously after focus returns.
                 delay \(Self.ghosttyFocusSettleDelay)
+
+                try
+                    if targetTab is not missing value and (id of focused terminal of targetTab as text) is "\(terminalSessionID)" then
+                        return "matched"
+                    end if
+                end try
 
                 try
                     if (id of focused terminal of selected tab of front window as text) is "\(terminalSessionID)" then

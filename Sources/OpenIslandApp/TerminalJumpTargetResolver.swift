@@ -133,6 +133,22 @@ struct TerminalJumpTargetResolver {
         return jumpTargetUpdates
     }
 
+    func resolveJumpTargets(
+        for sessions: [AgentSession],
+        ghosttySnapshots: [GhosttyTerminalSnapshot],
+        activeProcesses: [ActiveProcessSnapshot] = []
+    ) -> [String: JumpTarget] {
+        let matched = matchGhosttySnapshots(ghosttySnapshots, to: sessions, activeProcesses: activeProcesses)
+        var jumpTargetUpdates: [String: JumpTarget] = [:]
+        for (sessionID, snapshot) in matched {
+            if let session = sessions.first(where: { $0.id == sessionID }),
+               let corrected = correctedGhosttyJumpTarget(for: session, snapshot: snapshot) {
+                jumpTargetUpdates[sessionID] = corrected
+            }
+        }
+        return jumpTargetUpdates
+    }
+
     // MARK: - Ghostty matching
 
     private func matchGhosttySnapshots(
@@ -156,13 +172,12 @@ struct TerminalJumpTargetResolver {
             }
         }
 
-        // Pass 2: working directory match.
+        // Pass 2: pane title match. This is more specific than cwd when
+        // multiple Ghostty tabs are open in the same project.
         for snapshot in snapshots where !claimedSnapshotIDs.contains(snapshot.sessionID) {
-            let snapshotCWD = normalizedPathForMatching(snapshot.workingDirectory)
             if let session = sessions.first(where: {
                 !claimedSessionIDs.contains($0.id)
-                    && snapshotCWD != nil
-                    && normalizedPathForMatching($0.jumpTarget?.workingDirectory) == snapshotCWD
+                    && nonEmptyValue($0.jumpTarget?.paneTitle).map { snapshot.title.contains($0) } == true
             }) {
                 assignments[session.id] = snapshot
                 claimedSessionIDs.insert(session.id)
@@ -170,11 +185,13 @@ struct TerminalJumpTargetResolver {
             }
         }
 
-        // Pass 3: pane title match.
+        // Pass 3: working directory fallback.
         for snapshot in snapshots where !claimedSnapshotIDs.contains(snapshot.sessionID) {
+            let snapshotCWD = normalizedPathForMatching(snapshot.workingDirectory)
             if let session = sessions.first(where: {
                 !claimedSessionIDs.contains($0.id)
-                    && nonEmptyValue($0.jumpTarget?.paneTitle).map { snapshot.title.contains($0) } == true
+                    && snapshotCWD != nil
+                    && normalizedPathForMatching($0.jumpTarget?.workingDirectory) == snapshotCWD
             }) {
                 assignments[session.id] = snapshot
                 claimedSessionIDs.insert(session.id)

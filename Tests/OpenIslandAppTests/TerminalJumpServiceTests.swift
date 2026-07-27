@@ -24,7 +24,7 @@ final class TerminalJumpServiceTests: XCTestCase {
         let script = TerminalJumpService().ghosttyJumpScript(for: target)
 
         XCTAssertTrue(script.contains("activate"))
-        XCTAssertTrue(script.contains("activate window targetWindow"))
+        XCTAssertTrue(script.contains("set index of targetWindow to 1"))
         XCTAssertTrue(script.contains("select tab targetTab"))
         XCTAssertTrue(script.contains("focus targetTerminal"))
         XCTAssertTrue(script.contains("repeat 3 times"))
@@ -48,7 +48,48 @@ final class TerminalJumpServiceTests: XCTestCase {
 
         XCTAssertTrue(script.contains("(working directory of aTerminal as text) is \"/Users/wangruobing/Personal/open-island\""))
         XCTAssertTrue(script.contains("(name of aTerminal as text) contains \"codex ~/p/open-island\""))
+        XCTAssertLessThan(
+            script.range(of: "(name of aTerminal as text) contains \"codex ~/p/open-island\"")!.lowerBound,
+            script.range(of: "(working directory of aTerminal as text) is \"/Users/wangruobing/Personal/open-island\"")!.lowerBound
+        )
         XCTAssertTrue(script.contains("if \"\" is \"\" then"))
+    }
+
+    func testGhosttyResolverPrefersPaneTitleOverSharedWorkingDirectory() {
+        let session = AgentSession(
+            id: "copilot-session",
+            title: "Validar ideia de notificações do Cop",
+            tool: .copilotCLI,
+            origin: .live,
+            attachmentState: .attached,
+            phase: .completed,
+            summary: "Ready",
+            updatedAt: Date(timeIntervalSince1970: 1_000),
+            jumpTarget: JumpTarget(
+                terminalApp: "Ghostty",
+                workspaceName: "open-island",
+                paneTitle: "GitHub Copilot — open-island",
+                workingDirectory: "/Users/victorcamargo/projects/open-island"
+            )
+        )
+
+        let updates = TerminalJumpTargetResolver().resolveJumpTargets(
+            for: [session],
+            ghosttySnapshots: [
+                .init(
+                    sessionID: "ghostty-current-tab",
+                    workingDirectory: "/Users/victorcamargo/projects/open-island",
+                    title: "zsh — open-island"
+                ),
+                .init(
+                    sessionID: "ghostty-copilot-tab",
+                    workingDirectory: "/Users/victorcamargo/projects/open-island",
+                    title: "GitHub Copilot — open-island"
+                ),
+            ]
+        )
+
+        XCTAssertEqual(updates["copilot-session"]?.terminalSessionID, "ghostty-copilot-tab")
     }
 
     func testGhosttyJumpIntegrationMatchesFocusedTerminalForLiveSurfaces() throws {
